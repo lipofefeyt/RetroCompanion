@@ -41,12 +41,16 @@ class RetroAchievementsRepository(
         lookbackMinutes: Int = SEVEN_DAYS_IN_MINUTES
     ): Result<List<RecentUnlock>> = safeApiCall {
         require(credentials.isValid) { "User credentials are invalid or missing." }
-        api.getRecentAchievements(
+        val unlocks = api.getRecentAchievements(
             authUser = credentials.username,
             apiKey = credentials.apiKey,
             targetUser = credentials.username,
             minutes = lookbackMinutes
         )
+        // The API's ordering isn't documented/guaranteed; sort newest first ourselves.
+        // "Date" is "yyyy-MM-dd HH:mm:ss", so a plain string sort is also a correct
+        // chronological sort. Unlocks with no date (shouldn't happen) sort last.
+        unlocks.sortedByDescending { it.date.orEmpty() }
     }
 
     /**
