@@ -1,0 +1,34 @@
+[
+  {
+    "GameID": 11332,
+    "ConsoleID": 12,
+    "ConsoleName": "PlayStation",
+    "Title": "Final Fantasy Origins",
+    "ImageIcon": "/Images/060249.png",
+    "ImageTitle": "/Images/026707.png",
+    "ImageIngame": "/Images/026708.png",
+    "ImageBoxArt": "/Images/046257.png",
+    "LastPlayed": "2023-10-27 00:30:04",
+    "AchievementsTotal": 119,
+    "NumPossibleAchievements": 119,
+    "PossibleScore": 945,
+    "NumAchieved": 38,
+    "ScoreAchieved": 382,
+    "NumAchievedHardcore": 38,
+    "ScoreAchievedHardcore": 382
+  },
+  {
+    "GameID": 19010,
+    "ConsoleID": 21,
+    "ConsoleName": "PC Engine CD",
+    "Title": "Sample Game With No Achievements",
+    "ImageIcon": "/Images/000000.png",
+    "LastPlayed": "2023-11-01 12:00:00",
+    "NumPossibleAchievements": 0,
+    "PossibleScore": 0,
+    "NumAchieved": 0,
+    "ScoreAchieved": 0,
+    "NumAchievedHardcore": 0,
+    "ScoreAchievedHardcore": 0
+  }
+]

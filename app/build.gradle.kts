@@ -51,7 +51,6 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
-    implementation(libs.okhttp.logging)
     implementation(libs.coil.compose)
     implementation(libs.tink.android)
     testImplementation(libs.junit)

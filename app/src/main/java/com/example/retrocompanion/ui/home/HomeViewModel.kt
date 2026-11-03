@@ -55,7 +55,7 @@ class HomeViewModel(
             // Fetch recently played and 7-day unlocks (lookbackMinutes = 10080 explicitly) in parallel
             val gamesDeferred = async { repository.getRecentlyPlayed(credentials, count = 10) }
             val unlocksDeferred = async {
-                repository.getRecentUnlocks(credentials, lookbackMinutes = 10080, count = 50)
+                repository.getRecentUnlocks(credentials, lookbackMinutes = 10080)
             }
 
             val gamesResult = gamesDeferred.await()

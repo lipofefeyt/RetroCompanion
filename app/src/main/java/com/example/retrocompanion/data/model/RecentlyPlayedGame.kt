@@ -24,7 +24,7 @@ data class RecentlyPlayedGame(
     @SerializedName(value = "NumAchieved", alternate = ["numAchieved", "Achieved", "NumAwarded"])
     val numAchieved: Int = 0,
 
-    @SerializedName(value = "Score", alternate = ["score", "MyScore"])
+    @SerializedName(value = "ScoreAchieved", alternate = ["scoreAchieved", "Score", "score", "MyScore"])
     val score: Int = 0,
 
     @SerializedName(value = "LastPlayed", alternate = ["lastPlayed"])
