@@ -1,5 +1,6 @@
 package com.example.retrocompanion.data.remote
 
+import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.google.gson.Gson
@@ -69,5 +70,31 @@ class SampleResponseParsingTest {
         assertEquals(1, unlocks.size)
         assertEquals(false, unlocks[0].isHardcore)
         assertNull(unlocks[0].date)
+    }
+
+    @Test
+    fun `parses sample game info response, including the ID-keyed Achievements object`() {
+        val json = readResource("sample_game_info.json")
+        val gameInfo = gson.fromJson(json, GameInfo::class.java)
+
+        assertEquals("Pokemon Pinball mini", gameInfo.title)
+        assertEquals("Pokemon Mini", gameInfo.consoleName)
+        assertEquals("https://media.retroachievements.org/Images/028402.png", gameInfo.boxArtUrl)
+        assertEquals(2, gameInfo.achievements?.size)
+
+        val sortedAchievements = gameInfo.achievementsSortedForDisplay
+        assertEquals(listOf("Beginner I", "Beginner II"), sortedAchievements.map { it.title })
+
+        val earned = sortedAchievements[0]
+        assertEquals(true, earned.isEarned)
+        assertEquals(true, earned.isEarnedHardcore)
+        assertEquals("2023-12-27 16:04:50", earned.dateEarned)
+        assertEquals("https://media.retroachievements.org/Badge/108302.png", earned.badgeUrl)
+
+        val unearned = sortedAchievements[1]
+        assertEquals(false, unearned.isEarned)
+        assertEquals(false, unearned.isEarnedHardcore)
+        assertNull(unearned.dateEarned)
+        assertNull(unearned.dateEarnedHardcore)
     }
 }

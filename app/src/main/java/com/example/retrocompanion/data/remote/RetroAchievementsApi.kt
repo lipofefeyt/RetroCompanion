@@ -1,5 +1,6 @@
 package com.example.retrocompanion.data.remote
 
+import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.RecentUnlock
 import retrofit2.http.GET
@@ -42,4 +43,18 @@ interface RetroAchievementsApi {
         @Query("u") targetUser: String,
         @Query("m") minutes: Int = 60
     ): List<RecentUnlock>
+
+    /**
+     * Fetches a game's details and the user's progress on it.
+     * Docs: https://api-docs.retroachievements.org/v1/get-game-info-and-user-progress.html
+     *
+     * @param gameId The target game ID (g).
+     */
+    @GET("API_GetGameInfoAndUserProgress.php")
+    suspend fun getGameInfoAndUserProgress(
+        @Query("z") authUser: String,
+        @Query("y") apiKey: String,
+        @Query("u") targetUser: String,
+        @Query("g") gameId: Int
+    ): GameInfo
 }

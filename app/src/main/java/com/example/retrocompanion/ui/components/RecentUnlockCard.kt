@@ -17,12 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.retrocompanion.data.model.RecentUnlock
 
 @Composable
@@ -46,13 +43,11 @@ fun RecentUnlockCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Achievement Badge Image
-            AsyncImage(
-                model = unlock.displayBadgeUrl,
+            NetworkImage(
+                url = unlock.displayBadgeUrl,
                 contentDescription = unlock.title,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                placeholderGlyph = "🏆",
+                modifier = Modifier.size(52.dp)
             )
 
             Spacer(modifier = Modifier.width(12.dp))

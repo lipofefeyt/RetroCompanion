@@ -1,5 +1,6 @@
 package com.example.retrocompanion.ui
 
+import android.app.Application
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -14,11 +15,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.retrocompanion.ui.gamedetails.GameDetailsScreen
+import com.example.retrocompanion.ui.gamedetails.GameDetailsViewModel
 import com.example.retrocompanion.ui.home.CredentialsStatus
 import com.example.retrocompanion.ui.home.HomeScreen
 import com.example.retrocompanion.ui.home.HomeViewModel
@@ -28,6 +35,10 @@ import com.example.retrocompanion.ui.settings.SettingsViewModel
 sealed class Screen(val route: String, val title: String) {
     data object Home : Screen("home", "Home")
     data object Settings : Screen("settings", "Settings")
+    data object GameDetails : Screen("gameDetails/{gameId}", "Game Details") {
+        const val ARG_GAME_ID = "gameId"
+        fun createRoute(gameId: Int) = "gameDetails/$gameId"
+    }
 }
 
 @Composable
@@ -112,12 +123,38 @@ fun MainScreen(
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onGameClick = { gameId ->
+                        navController.navigate(Screen.GameDetails.createRoute(gameId))
                     }
                 )
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     viewModel = settingsViewModel
+                )
+            }
+            composable(
+                route = Screen.GameDetails.route,
+                arguments = listOf(navArgument(Screen.GameDetails.ARG_GAME_ID) { type = NavType.IntType })
+            ) { backStackEntry ->
+                val gameId = backStackEntry.arguments?.getInt(Screen.GameDetails.ARG_GAME_ID) ?: 0
+                val application = LocalContext.current.applicationContext as Application
+                val gameDetailsViewModel: GameDetailsViewModel = viewModel(
+                    key = "gameDetails-$gameId",
+                    factory = GameDetailsViewModel.factory(application, gameId)
+                )
+                GameDetailsScreen(
+                    viewModel = gameDetailsViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
         }

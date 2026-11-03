@@ -42,6 +42,7 @@ import com.example.retrocompanion.ui.components.SectionLoadingRow
 fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToSettings: () -> Unit,
+    onGameClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -140,7 +141,8 @@ fun HomeScreen(
                             recentlyPlayedSection(
                                 state = uiState.recentlyPlayed,
                                 onRetry = { viewModel.retryRecentlyPlayed() },
-                                onGoToSettings = onNavigateToSettings
+                                onGoToSettings = onNavigateToSettings,
+                                onGameClick = onGameClick
                             )
 
                             item {
@@ -180,7 +182,8 @@ fun HomeScreen(
 private fun LazyListScope.recentlyPlayedSection(
     state: SectionState<List<RecentlyPlayedGame>>,
     onRetry: () -> Unit,
-    onGoToSettings: () -> Unit
+    onGoToSettings: () -> Unit,
+    onGameClick: (Int) -> Unit
 ) {
     when (state) {
         is SectionState.Loading -> item { SectionLoadingRow() }
@@ -203,7 +206,7 @@ private fun LazyListScope.recentlyPlayedSection(
                 }
             } else {
                 items(items = state.data, key = { it.gameId }) { game ->
-                    RecentlyPlayedCard(game = game)
+                    RecentlyPlayedCard(game = game, onClick = { onGameClick(game.gameId) })
                 }
             }
         }

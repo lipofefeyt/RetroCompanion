@@ -1,5 +1,6 @@
 package com.example.retrocompanion.data.repository
 
+import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCredentials
@@ -24,6 +25,13 @@ private class FakeRetroAchievementsApi(
         targetUser: String,
         minutes: Int
     ): List<RecentUnlock> = recentAchievements
+
+    override suspend fun getGameInfoAndUserProgress(
+        authUser: String,
+        apiKey: String,
+        targetUser: String,
+        gameId: Int
+    ): GameInfo = GameInfo()
 }
 
 class RetroAchievementsRepositoryTest {

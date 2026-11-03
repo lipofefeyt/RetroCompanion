@@ -1,5 +1,6 @@
 package com.example.retrocompanion.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,22 +20,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 
 @Composable
 fun RecentlyPlayedCard(
     game: RecentlyPlayedGame,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
@@ -47,13 +48,11 @@ fun RecentlyPlayedCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Game Icon
-            AsyncImage(
-                model = game.gameIconUrl,
+            NetworkImage(
+                url = game.gameIconUrl,
                 contentDescription = game.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                placeholderGlyph = "🎮",
+                modifier = Modifier.size(56.dp)
             )
 
             Spacer(modifier = Modifier.width(12.dp))

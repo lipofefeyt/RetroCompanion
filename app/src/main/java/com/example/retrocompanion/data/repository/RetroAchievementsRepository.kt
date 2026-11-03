@@ -1,5 +1,6 @@
 package com.example.retrocompanion.data.repository
 
+import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.UserCredentials
@@ -51,6 +52,20 @@ class RetroAchievementsRepository(
         // "Date" is "yyyy-MM-dd HH:mm:ss", so a plain string sort is also a correct
         // chronological sort. Unlocks with no date (shouldn't happen) sort last.
         unlocks.sortedByDescending { it.date.orEmpty() }
+    }
+
+    /** Fetches a game's details and the current user's progress on it. */
+    suspend fun getGameInfo(
+        credentials: UserCredentials,
+        gameId: Int
+    ): Result<GameInfo> = safeApiCall {
+        require(credentials.isValid) { "User credentials are invalid or missing." }
+        api.getGameInfoAndUserProgress(
+            authUser = credentials.username,
+            apiKey = credentials.apiKey,
+            targetUser = credentials.username,
+            gameId = gameId
+        )
     }
 
     /**
