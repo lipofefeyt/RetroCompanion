@@ -19,8 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.retrocompanion.ui.home.CredentialsStatus
 import com.example.retrocompanion.ui.home.HomeScreen
-import com.example.retrocompanion.ui.home.HomeUiState
 import com.example.retrocompanion.ui.home.HomeViewModel
 import com.example.retrocompanion.ui.settings.SettingsScreen
 import com.example.retrocompanion.ui.settings.SettingsViewModel
@@ -45,11 +45,11 @@ fun MainScreen(
     // the user away from the screen they're already on.
     val homeUiState by homeViewModel.uiState.collectAsState()
     var hasHandledFirstLaunch by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(homeUiState) {
+    LaunchedEffect(homeUiState.credentialsStatus) {
         if (!hasHandledFirstLaunch) {
-            when (homeUiState) {
-                is HomeUiState.Loading -> Unit
-                is HomeUiState.MissingCredentials -> {
+            when (homeUiState.credentialsStatus) {
+                CredentialsStatus.Resolving -> Unit
+                CredentialsStatus.Missing -> {
                     hasHandledFirstLaunch = true
                     navController.navigate(Screen.Settings.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
@@ -58,7 +58,7 @@ fun MainScreen(
                         launchSingleTop = true
                     }
                 }
-                else -> hasHandledFirstLaunch = true
+                CredentialsStatus.Present -> hasHandledFirstLaunch = true
             }
         }
     }

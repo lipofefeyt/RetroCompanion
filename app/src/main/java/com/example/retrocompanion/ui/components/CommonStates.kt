@@ -97,50 +97,57 @@ fun MissingCredentialsScreen(
     }
 }
 
+/** Compact inline loading indicator for a single Home section (not a full-screen takeover). */
 @Composable
-fun ErrorScreen(
-    message: String,
-    onRetry: () -> Unit,
-    onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun SectionLoadingRow(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .padding(16.dp),
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.errorContainer
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Unable to Load Data",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onOpenSettings) {
-                        Text("Check Settings")
+        CircularProgressIndicator(
+            modifier = Modifier.size(32.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+/**
+ * Error state for a single Home section: a message, a Retry action, and — only when the
+ * failure was a rejected API key — a link to Settings. A failure here doesn't affect any
+ * other section.
+ */
+@Composable
+fun SectionErrorCard(
+    message: String,
+    showGoToSettings: Boolean,
+    onRetry: () -> Unit,
+    onGoToSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (showGoToSettings) {
+                    OutlinedButton(onClick = onGoToSettings) {
+                        Text("Go to Settings")
                     }
-                    Button(onClick = onRetry) {
-                        Text("Retry")
-                    }
+                }
+                Button(onClick = onRetry) {
+                    Text("Retry")
                 }
             }
         }
