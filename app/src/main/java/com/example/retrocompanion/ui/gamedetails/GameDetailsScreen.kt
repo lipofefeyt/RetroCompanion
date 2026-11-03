@@ -39,6 +39,8 @@ import com.example.retrocompanion.ui.components.EmptySectionCard
 import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.NetworkImage
 import com.example.retrocompanion.ui.components.SectionErrorCard
+import com.example.retrocompanion.ui.components.StaleDataBanner
+import com.example.retrocompanion.ui.components.formatRelativeTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,6 +100,10 @@ fun GameDetailsScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        if (state.isStale && state.cachedAtMillis != null) {
+                            item { StaleDataBanner(relativeTime = formatRelativeTime(state.cachedAtMillis)) }
+                        }
+
                         item {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 NetworkImage(

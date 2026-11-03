@@ -3,6 +3,8 @@ package com.example.retrocompanion.ui.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.retrocompanion.data.local.DataStoreCacheDao
+import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,9 +20,10 @@ data class SettingsUiState(
     val isLoading: Boolean = true
 )
 
-class SettingsViewModel(
+class SettingsViewModel @JvmOverloads constructor(
     application: Application,
-    private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application)
+    private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
+    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application))
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -67,8 +70,12 @@ class SettingsViewModel(
     }
 
     fun clearCredentials() {
+        val usernameToClear = _uiState.value.usernameInput
         viewModelScope.launch {
             userPreferencesRepository.clearCredentials()
+            if (usernameToClear.isNotBlank()) {
+                responseCache.clearForUser(usernameToClear)
+            }
             _uiState.value = SettingsUiState(
                 usernameInput = "",
                 apiKeyInput = "",

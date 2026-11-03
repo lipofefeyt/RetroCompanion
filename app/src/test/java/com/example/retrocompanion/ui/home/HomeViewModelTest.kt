@@ -1,19 +1,25 @@
 package com.example.retrocompanion.ui.home
 
 import android.app.Application
+import com.example.retrocompanion.data.local.CacheKeys
+import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.data.repository.RetroAchievementsRepository
+import com.example.retrocompanion.testutil.FakeCacheDao
 import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
 import com.example.retrocompanion.testutil.FakeUserCredentialsSource
 import com.example.retrocompanion.testutil.MainDispatcherRule
 import com.example.retrocompanion.testutil.httpException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -26,12 +32,15 @@ class HomeViewModelTest {
 
     private val sampleCredentials = UserCredentials(username = "sample_user", apiKey = "sample-fake-key")
 
+    private fun emptyCache() = ResponseCache(FakeCacheDao())
+
     @Test
     fun `missing credentials sets status to Missing`() = runTest(mainDispatcherRule.dispatcher) {
         val viewModel = HomeViewModel(
             Application(),
             FakeUserCredentialsSource(UserCredentials()),
-            RetroAchievementsRepository(FakeRetroAchievementsApi())
+            RetroAchievementsRepository(FakeRetroAchievementsApi()),
+            emptyCache()
         )
 
         advanceUntilIdle()
@@ -50,7 +59,8 @@ class HomeViewModelTest {
         val viewModel = HomeViewModel(
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
-            RetroAchievementsRepository(api)
+            RetroAchievementsRepository(api),
+            emptyCache()
         )
 
         advanceUntilIdle()
@@ -72,7 +82,8 @@ class HomeViewModelTest {
         val viewModel = HomeViewModel(
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
-            RetroAchievementsRepository(api)
+            RetroAchievementsRepository(api),
+            emptyCache()
         )
 
         advanceUntilIdle()
@@ -95,7 +106,8 @@ class HomeViewModelTest {
         val viewModel = HomeViewModel(
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
-            RetroAchievementsRepository(api)
+            RetroAchievementsRepository(api),
+            emptyCache()
         )
         advanceUntilIdle()
         assertEquals(1, recentlyPlayedCalls)
@@ -119,7 +131,8 @@ class HomeViewModelTest {
         val viewModel = HomeViewModel(
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
-            RetroAchievementsRepository(api)
+            RetroAchievementsRepository(api),
+            emptyCache()
         )
         advanceUntilIdle()
 
@@ -129,5 +142,79 @@ class HomeViewModelTest {
         assertEquals(2, recentlyPlayedCalls)
         assertEquals(2, recentUnlocksCalls)
         assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun `cached data is shown immediately as stale while the network call is still in flight`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val cachedGames = listOf(RecentlyPlayedGame(gameId = 1, title = "Cached Game"))
+            val freshGames = listOf(RecentlyPlayedGame(gameId = 2, title = "Fresh Game"))
+            val cache = emptyCache()
+            cache.write(CacheKeys.recentlyPlayed(sampleCredentials.username), cachedGames)
+
+            val networkGate = CompletableDeferred<Unit>()
+            val api = FakeRetroAchievementsApi(
+                recentlyPlayedGamesResult = { networkGate.await(); freshGames }
+            )
+            val viewModel = HomeViewModel(
+                Application(),
+                FakeUserCredentialsSource(sampleCredentials),
+                RetroAchievementsRepository(api),
+                cache
+            )
+
+            runCurrent()
+
+            val midFlightState = viewModel.uiState.value.recentlyPlayed
+            assertTrue(midFlightState is SectionState.Success)
+            assertTrue((midFlightState as SectionState.Success).isStale)
+            assertEquals(cachedGames, midFlightState.data)
+
+            networkGate.complete(Unit)
+            advanceUntilIdle()
+
+            val finalState = viewModel.uiState.value.recentlyPlayed
+            assertTrue(finalState is SectionState.Success)
+            assertFalse((finalState as SectionState.Success).isStale)
+            assertEquals(freshGames, finalState.data)
+        }
+
+    @Test
+    fun `network failure keeps showing cached data instead of erroring`() = runTest(mainDispatcherRule.dispatcher) {
+        val cachedGames = listOf(RecentlyPlayedGame(gameId = 1, title = "Cached Game"))
+        val cache = emptyCache()
+        cache.write(CacheKeys.recentlyPlayed(sampleCredentials.username), cachedGames)
+        val api = FakeRetroAchievementsApi(recentlyPlayedGamesResult = { throw httpException(500) })
+        val viewModel = HomeViewModel(
+            Application(),
+            FakeUserCredentialsSource(sampleCredentials),
+            RetroAchievementsRepository(api),
+            cache
+        )
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value.recentlyPlayed
+        assertTrue(state is SectionState.Success)
+        assertTrue((state as SectionState.Success).isStale)
+        assertEquals(cachedGames, state.data)
+    }
+
+    @Test
+    fun `successful fetch writes fresh data to the cache`() = runTest(mainDispatcherRule.dispatcher) {
+        val freshGames = listOf(RecentlyPlayedGame(gameId = 9, title = "Fresh Game"))
+        val cacheDao = FakeCacheDao()
+        val cache = ResponseCache(cacheDao)
+        val api = FakeRetroAchievementsApi(recentlyPlayedGamesResult = { freshGames })
+        val viewModel = HomeViewModel(
+            Application(),
+            FakeUserCredentialsSource(sampleCredentials),
+            RetroAchievementsRepository(api),
+            cache
+        )
+
+        advanceUntilIdle()
+
+        assertNotNull(cacheDao.get(CacheKeys.recentlyPlayed(sampleCredentials.username)))
     }
 }

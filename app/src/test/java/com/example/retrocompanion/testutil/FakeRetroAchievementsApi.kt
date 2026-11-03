@@ -20,9 +20,9 @@ fun httpException(code: Int): HttpException =
  * real exception-mapping logic.
  */
 class FakeRetroAchievementsApi(
-    var recentlyPlayedGamesResult: () -> List<RecentlyPlayedGame> = { emptyList() },
-    var recentAchievementsResult: () -> List<RecentUnlock> = { emptyList() },
-    var gameInfoResult: () -> GameInfo = { GameInfo() }
+    var recentlyPlayedGamesResult: suspend () -> List<RecentlyPlayedGame> = { emptyList() },
+    var recentAchievementsResult: suspend () -> List<RecentUnlock> = { emptyList() },
+    var gameInfoResult: suspend () -> GameInfo = { GameInfo() }
 ) : RetroAchievementsApi {
 
     override suspend fun getRecentlyPlayedGames(

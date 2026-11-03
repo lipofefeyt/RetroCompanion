@@ -154,6 +154,28 @@ fun SectionErrorCard(
     }
 }
 
+/** Shown above a section/screen's content when it's displaying cached (not freshly fetched) data. */
+@Composable
+fun StaleDataBanner(
+    relativeTime: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+    ) {
+        Text(
+            text = "Showing cached data from $relativeTime",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
 @Composable
 fun EmptySectionCard(
     title: String,

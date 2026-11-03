@@ -1,7 +1,10 @@
 package com.example.retrocompanion.ui.settings
 
 import android.app.Application
+import com.example.retrocompanion.data.local.CacheKeys
+import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.model.UserCredentials
+import com.example.retrocompanion.testutil.FakeCacheDao
 import com.example.retrocompanion.testutil.FakeUserCredentialsSource
 import com.example.retrocompanion.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -9,6 +12,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -19,10 +23,12 @@ class SettingsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
+    private fun emptyCache() = ResponseCache(FakeCacheDao())
+
     @Test
     fun `init loads existing stored credentials into the input fields`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource(UserCredentials(username = "sample_user", apiKey = "sample-fake-key"))
-        val viewModel = SettingsViewModel(Application(), source)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache())
 
         advanceUntilIdle()
 
@@ -35,7 +41,7 @@ class SettingsViewModelTest {
     @Test
     fun `changing username or api key resets isSavedSuccess`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource()
-        val viewModel = SettingsViewModel(Application(), source)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache())
         advanceUntilIdle()
 
         viewModel.onUsernameChanged("sample_user")
@@ -53,7 +59,7 @@ class SettingsViewModelTest {
     @Test
     fun `saveCredentials writes current inputs to the source and sets isSavedSuccess`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource()
-        val viewModel = SettingsViewModel(Application(), source)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache())
         advanceUntilIdle()
 
         viewModel.onUsernameChanged("sample_user")
@@ -69,7 +75,7 @@ class SettingsViewModelTest {
     @Test
     fun `clearCredentials clears the source and resets state`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource(UserCredentials(username = "sample_user", apiKey = "sample-fake-key"))
-        val viewModel = SettingsViewModel(Application(), source)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache())
         advanceUntilIdle()
 
         viewModel.clearCredentials()
@@ -83,9 +89,24 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `clearCredentials also clears that user's cached data`() = runTest(mainDispatcherRule.dispatcher) {
+        val cacheDao = FakeCacheDao()
+        val cache = ResponseCache(cacheDao)
+        cache.write(CacheKeys.recentlyPlayed("sample_user"), emptyList<Any>())
+        val source = FakeUserCredentialsSource(UserCredentials(username = "sample_user", apiKey = "sample-fake-key"))
+        val viewModel = SettingsViewModel(Application(), source, cache)
+        advanceUntilIdle()
+
+        viewModel.clearCredentials()
+        advanceUntilIdle()
+
+        assertNull(cacheDao.get(CacheKeys.recentlyPlayed("sample_user")))
+    }
+
+    @Test
     fun `dismissSavedMessage resets isSavedSuccess`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource()
-        val viewModel = SettingsViewModel(Application(), source)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache())
         advanceUntilIdle()
         viewModel.onUsernameChanged("sample_user")
         viewModel.onApiKeyChanged("sample-fake-key")

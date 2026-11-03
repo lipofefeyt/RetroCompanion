@@ -5,8 +5,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.retrocompanion.data.local.CacheKeys
+import com.example.retrocompanion.data.local.DataStoreCacheDao
+import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
+import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +23,8 @@ class GameDetailsViewModel(
     application: Application,
     private val gameId: Int,
     private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
-    private val repository: RetroAchievementsRepository = RetroAchievementsRepository()
+    private val repository: RetroAchievementsRepository = RetroAchievementsRepository(),
+    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application))
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GameDetailsUiState>(GameDetailsUiState.Loading)
@@ -33,7 +38,6 @@ class GameDetailsViewModel(
 
     private fun load() {
         viewModelScope.launch {
-            _uiState.value = GameDetailsUiState.Loading
             val credentials = userPreferencesRepository.userCredentialsFlow.first()
             if (!credentials.isValid) {
                 _uiState.value = GameDetailsUiState.Error(
@@ -42,16 +46,31 @@ class GameDetailsViewModel(
                 )
                 return@launch
             }
+
+            val cacheKey = CacheKeys.gameInfo(credentials.username, gameId)
+            val cached = responseCache.read<GameInfo>(cacheKey, GameInfo::class.java)
+            _uiState.value = if (cached != null) {
+                GameDetailsUiState.Success(cached.data, isStale = true, cachedAtMillis = cached.timestampMillis)
+            } else {
+                GameDetailsUiState.Loading
+            }
+
             val result = repository.getGameInfo(credentials, gameId)
-            _uiState.value = result.fold(
-                onSuccess = { GameDetailsUiState.Success(it) },
-                onFailure = { error ->
+            _uiState.value = if (result.isSuccess) {
+                val gameInfo = result.getOrThrow()
+                responseCache.write(cacheKey, gameInfo)
+                GameDetailsUiState.Success(gameInfo, isStale = false)
+            } else {
+                val error = result.exceptionOrNull()!!
+                if (cached != null) {
+                    GameDetailsUiState.Success(cached.data, isStale = true, cachedAtMillis = cached.timestampMillis)
+                } else {
                     GameDetailsUiState.Error(
                         message = error.localizedMessage ?: "Failed to load game details.",
                         isInvalidApiKey = error is RetroApiException.InvalidApiKey
                     )
                 }
-            )
+            }
         }
     }
 

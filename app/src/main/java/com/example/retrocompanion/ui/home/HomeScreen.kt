@@ -36,6 +36,8 @@ import com.example.retrocompanion.ui.components.RecentUnlockCard
 import com.example.retrocompanion.ui.components.RecentlyPlayedCard
 import com.example.retrocompanion.ui.components.SectionErrorCard
 import com.example.retrocompanion.ui.components.SectionLoadingRow
+import com.example.retrocompanion.ui.components.StaleDataBanner
+import com.example.retrocompanion.ui.components.formatRelativeTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,6 +199,9 @@ private fun LazyListScope.recentlyPlayedSection(
         }
 
         is SectionState.Success -> {
+            if (state.isStale && state.cachedAtMillis != null) {
+                item { StaleDataBanner(relativeTime = formatRelativeTime(state.cachedAtMillis)) }
+            }
             if (state.data.isEmpty()) {
                 item {
                     EmptySectionCard(
@@ -230,6 +235,9 @@ private fun LazyListScope.recentUnlocksSection(
         }
 
         is SectionState.Success -> {
+            if (state.isStale && state.cachedAtMillis != null) {
+                item { StaleDataBanner(relativeTime = formatRelativeTime(state.cachedAtMillis)) }
+            }
             if (state.data.isEmpty()) {
                 item {
                     EmptySectionCard(
