@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.repository.RetroAchievementsRepository
@@ -16,11 +17,10 @@ import kotlinx.coroutines.launch
 
 class GameDetailsViewModel(
     application: Application,
-    private val gameId: Int
+    private val gameId: Int,
+    private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
+    private val repository: RetroAchievementsRepository = RetroAchievementsRepository()
 ) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val repository = RetroAchievementsRepository()
 
     private val _uiState = MutableStateFlow<GameDetailsUiState>(GameDetailsUiState.Loading)
     val uiState: StateFlow<GameDetailsUiState> = _uiState.asStateFlow()

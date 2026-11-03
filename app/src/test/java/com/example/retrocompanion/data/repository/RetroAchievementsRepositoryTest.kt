@@ -1,38 +1,11 @@
 package com.example.retrocompanion.data.repository
 
-import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
-import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCredentials
-import com.example.retrocompanion.data.remote.RetroAchievementsApi
+import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
-
-private class FakeRetroAchievementsApi(
-    private val recentAchievements: List<RecentUnlock> = emptyList()
-) : RetroAchievementsApi {
-    override suspend fun getRecentlyPlayedGames(
-        authUser: String,
-        apiKey: String,
-        targetUser: String,
-        count: Int
-    ): List<RecentlyPlayedGame> = emptyList()
-
-    override suspend fun getRecentAchievements(
-        authUser: String,
-        apiKey: String,
-        targetUser: String,
-        minutes: Int
-    ): List<RecentUnlock> = recentAchievements
-
-    override suspend fun getGameInfoAndUserProgress(
-        authUser: String,
-        apiKey: String,
-        targetUser: String,
-        gameId: Int
-    ): GameInfo = GameInfo()
-}
 
 class RetroAchievementsRepositoryTest {
 
@@ -45,7 +18,8 @@ class RetroAchievementsRepositoryTest {
             RecentUnlock(date = "2023-12-27 16:04:50", achievementId = 2, title = "Newest"),
             RecentUnlock(date = "2023-12-26 12:30:00", achievementId = 3, title = "Middle")
         )
-        val repository = RetroAchievementsRepository(FakeRetroAchievementsApi(outOfOrder))
+        val api = FakeRetroAchievementsApi(recentAchievementsResult = { outOfOrder })
+        val repository = RetroAchievementsRepository(api)
 
         val result = repository.getRecentUnlocks(sampleCredentials).getOrThrow()
 

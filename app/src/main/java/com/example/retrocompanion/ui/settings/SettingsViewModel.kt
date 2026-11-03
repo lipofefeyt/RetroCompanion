@@ -3,6 +3,7 @@ package com.example.retrocompanion.ui.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,10 +19,9 @@ data class SettingsUiState(
 )
 
 class SettingsViewModel(
-    application: Application
+    application: Application,
+    private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application)
 ) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()

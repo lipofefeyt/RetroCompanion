@@ -34,14 +34,14 @@ fun decodeCredentials(
 class UserPreferencesRepository(
     private val context: Context,
     private val cipher: CredentialsCipher = AndroidKeystoreCredentialsCipherFactory.create(context)
-) {
+) : UserCredentialsSource {
 
     private object PreferencesKeys {
         val USERNAME = stringPreferencesKey("ra_username_enc")
         val API_KEY = stringPreferencesKey("ra_api_key_enc")
     }
 
-    val userCredentialsFlow: Flow<UserCredentials> = context.dataStore.data
+    override val userCredentialsFlow: Flow<UserCredentials> = context.dataStore.data
         .map { preferences ->
             decodeCredentials(
                 encryptedUsername = preferences[PreferencesKeys.USERNAME],
@@ -50,14 +50,14 @@ class UserPreferencesRepository(
             )
         }
 
-    suspend fun saveUserCredentials(username: String, apiKey: String) {
+    override suspend fun saveUserCredentials(username: String, apiKey: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.USERNAME] = cipher.encrypt(username.trim())
             preferences[PreferencesKeys.API_KEY] = cipher.encrypt(apiKey.trim())
         }
     }
 
-    suspend fun clearCredentials() {
+    override suspend fun clearCredentials() {
         context.dataStore.edit { preferences ->
             preferences.remove(PreferencesKeys.USERNAME)
             preferences.remove(PreferencesKeys.API_KEY)

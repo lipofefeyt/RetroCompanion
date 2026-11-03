@@ -3,6 +3,7 @@ package com.example.retrocompanion.ui.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.data.remote.RetroApiException
@@ -16,11 +17,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    application: Application
+    application: Application,
+    private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
+    private val repository: RetroAchievementsRepository = RetroAchievementsRepository()
 ) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val repository = RetroAchievementsRepository()
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
