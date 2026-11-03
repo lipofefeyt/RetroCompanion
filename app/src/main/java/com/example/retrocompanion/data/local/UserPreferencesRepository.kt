@@ -12,25 +12,48 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "retro_user_prefs")
 
-class UserPreferencesRepository(private val context: Context) {
+/**
+ * Decodes stored, encrypted credential fields back into [UserCredentials].
+ * Pure function (no Android/Context dependency) so it can be unit tested directly:
+ * if either field is missing or fails to decrypt, returns an empty/invalid
+ * [UserCredentials] instead of throwing.
+ */
+fun decodeCredentials(
+    encryptedUsername: String?,
+    encryptedApiKey: String?,
+    cipher: CredentialsCipher
+): UserCredentials {
+    if (encryptedUsername.isNullOrEmpty() || encryptedApiKey.isNullOrEmpty()) {
+        return UserCredentials()
+    }
+    val username = cipher.decrypt(encryptedUsername) ?: return UserCredentials()
+    val apiKey = cipher.decrypt(encryptedApiKey) ?: return UserCredentials()
+    return UserCredentials(username = username, apiKey = apiKey)
+}
+
+class UserPreferencesRepository(
+    private val context: Context,
+    private val cipher: CredentialsCipher = AndroidKeystoreCredentialsCipherFactory.create(context)
+) {
 
     private object PreferencesKeys {
-        val USERNAME = stringPreferencesKey("ra_username")
-        val API_KEY = stringPreferencesKey("ra_api_key")
+        val USERNAME = stringPreferencesKey("ra_username_enc")
+        val API_KEY = stringPreferencesKey("ra_api_key_enc")
     }
 
     val userCredentialsFlow: Flow<UserCredentials> = context.dataStore.data
         .map { preferences ->
-            UserCredentials(
-                username = preferences[PreferencesKeys.USERNAME] ?: "",
-                apiKey = preferences[PreferencesKeys.API_KEY] ?: ""
+            decodeCredentials(
+                encryptedUsername = preferences[PreferencesKeys.USERNAME],
+                encryptedApiKey = preferences[PreferencesKeys.API_KEY],
+                cipher = cipher
             )
         }
 
     suspend fun saveUserCredentials(username: String, apiKey: String) {
         context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.USERNAME] = username.trim()
-            preferences[PreferencesKeys.API_KEY] = apiKey.trim()
+            preferences[PreferencesKeys.USERNAME] = cipher.encrypt(username.trim())
+            preferences[PreferencesKeys.API_KEY] = cipher.encrypt(apiKey.trim())
         }
     }
 
