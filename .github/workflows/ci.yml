@@ -29,6 +29,9 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --console=plain
 
+      - name: Run lint
+        run: ./gradlew lintDebug --console=plain
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --console=plain
 
@@ -38,4 +41,14 @@ jobs:
         with:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.sarif
           if-no-files-found: ignore
