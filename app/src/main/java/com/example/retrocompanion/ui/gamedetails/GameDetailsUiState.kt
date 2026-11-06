@@ -20,7 +20,8 @@ sealed interface GameDetailsUiState {
         val cachedAtMillis: Long? = null,
         val searchQuery: String = "",
         val selectedFilter: AchievementFilter = AchievementFilter.ALL,
-        val isFavorite: Boolean = false
+        val isFavorite: Boolean = false,
+        val sortByRarity: Boolean = false
     ) : GameDetailsUiState {
         val filteredAchievements: List<GameAchievement>
             get() {
@@ -31,11 +32,19 @@ sealed interface GameDetailsUiState {
                     AchievementFilter.LOCKED -> list.filter { !it.isEarned }
                     AchievementFilter.HARDCORE -> list.filter { it.isEarnedHardcore }
                 }
-                if (searchQuery.isBlank()) return filteredByStatus
-                val query = searchQuery.trim()
-                return filteredByStatus.filter {
-                    it.title.contains(query, ignoreCase = true) ||
-                        (it.description?.contains(query, ignoreCase = true) == true)
+                val filteredBySearch = if (searchQuery.isBlank()) {
+                    filteredByStatus
+                } else {
+                    val query = searchQuery.trim()
+                    filteredByStatus.filter {
+                        it.title.contains(query, ignoreCase = true) ||
+                            (it.description?.contains(query, ignoreCase = true) == true)
+                    }
+                }
+                return if (sortByRarity) {
+                    filteredBySearch.sortedBy { it.numAwarded }
+                } else {
+                    filteredBySearch
                 }
             }
     }

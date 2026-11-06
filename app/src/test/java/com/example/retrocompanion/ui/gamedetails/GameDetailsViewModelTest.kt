@@ -221,4 +221,31 @@ class GameDetailsViewModelTest {
         state = viewModel.uiState.value as GameDetailsUiState.Success
         assertEquals(false, state.isFavorite)
     }
+
+    @Test
+    fun `sort by rarity orders achievements by fewest earners first`() = runTest(mainDispatcherRule.dispatcher) {
+        val common = com.example.retrocompanion.data.model.GameAchievement(id = 1, title = "Common", numAwarded = 500)
+        val rare = com.example.retrocompanion.data.model.GameAchievement(id = 2, title = "Rare", numAwarded = 5)
+        val gameInfo = GameInfo(
+            gameId = 42,
+            title = "Sample Game",
+            achievements = mapOf("1" to common, "2" to rare)
+        )
+        val api = FakeRetroAchievementsApi(gameInfoResult = { gameInfo })
+        val viewModel = GameDetailsViewModel(
+            Application(),
+            gameId = 42,
+            userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
+            repository = RetroAchievementsRepository(api),
+            responseCache = emptyCache()
+        )
+        advanceUntilIdle()
+
+        var state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertEquals(listOf("Common", "Rare"), state.filteredAchievements.map { it.title })
+
+        viewModel.onSortByRarityToggled()
+        state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertEquals(listOf("Rare", "Common"), state.filteredAchievements.map { it.title })
+    }
 }

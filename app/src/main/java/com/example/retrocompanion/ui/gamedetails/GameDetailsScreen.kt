@@ -205,6 +205,13 @@ fun GameDetailsScreen(
                                             label = { Text(filter.label) }
                                         )
                                     }
+                                    item {
+                                        FilterChip(
+                                            selected = state.sortByRarity,
+                                            onClick = { viewModel.onSortByRarityToggled() },
+                                            label = { Text("Rarity") }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -232,7 +239,7 @@ fun GameDetailsScreen(
                             }
                         } else {
                             items(items = filteredList, key = { it.id }) { achievement ->
-                                AchievementRow(achievement)
+                                AchievementRow(achievement, rarityPercent = game.rarityPercent(achievement))
                             }
                         }
                     }
@@ -243,7 +250,11 @@ fun GameDetailsScreen(
 }
 
 @Composable
-private fun AchievementRow(achievement: GameAchievement, modifier: Modifier = Modifier) {
+private fun AchievementRow(
+    achievement: GameAchievement,
+    rarityPercent: Float?,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -285,6 +296,13 @@ private fun AchievementRow(achievement: GameAchievement, modifier: Modifier = Mo
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                rarityPercent?.let {
+                    Text(
+                        text = "${"%.1f".format(it)}% of players unlocked this",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

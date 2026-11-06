@@ -31,7 +31,13 @@ data class GameAchievement(
     val dateEarned: String? = null,
 
     @SerializedName(value = "DateEarnedHardcore", alternate = ["dateEarnedHardcore"])
-    val dateEarnedHardcore: String? = null
+    val dateEarnedHardcore: String? = null,
+
+    @SerializedName(value = "NumAwarded", alternate = ["numAwarded"])
+    val numAwarded: Int = 0,
+
+    @SerializedName(value = "NumAwardedHardcore", alternate = ["numAwardedHardcore"])
+    val numAwardedHardcore: Int = 0
 ) {
     val isEarned: Boolean get() = !dateEarned.isNullOrBlank()
     val isEarnedHardcore: Boolean get() = !dateEarnedHardcore.isNullOrBlank()

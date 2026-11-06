@@ -27,7 +27,10 @@ data class GameInfo(
     val numAwardedToUser: Int = 0,
 
     @SerializedName(value = "Achievements", alternate = ["achievements"])
-    val achievements: Map<String, GameAchievement>? = null
+    val achievements: Map<String, GameAchievement>? = null,
+
+    @SerializedName(value = "NumDistinctPlayersCasual", alternate = ["numDistinctPlayersCasual"])
+    val numDistinctPlayersCasual: Int = 0
 ) {
     val iconUrl: String
         get() = resolveImageUrl(imageIcon)
@@ -38,6 +41,15 @@ data class GameInfo(
     /** Achievements as a list, sorted by their display order (falls back to achievement ID). */
     val achievementsSortedForDisplay: List<GameAchievement>
         get() = achievements.orEmpty().values.sortedWith(compareBy({ it.displayOrder }, { it.id }))
+
+    /**
+     * Percentage of players who have earned [achievement], or null if the total player count
+     * isn't known (avoids a divide-by-zero / meaningless 0% for games with no recorded players).
+     */
+    fun rarityPercent(achievement: GameAchievement): Float? {
+        if (numDistinctPlayersCasual <= 0) return null
+        return achievement.numAwarded.toFloat() / numDistinctPlayersCasual * 100f
+    }
 
     private fun resolveImageUrl(path: String?): String {
         if (path.isNullOrBlank()) return ""
