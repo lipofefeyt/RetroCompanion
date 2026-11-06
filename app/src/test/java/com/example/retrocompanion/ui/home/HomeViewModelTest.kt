@@ -12,6 +12,8 @@ import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
 import com.example.retrocompanion.testutil.FakeUserCredentialsSource
 import com.example.retrocompanion.testutil.MainDispatcherRule
 import com.example.retrocompanion.testutil.httpException
+import com.example.retrocompanion.ui.common.CredentialsStatus
+import com.example.retrocompanion.ui.common.SectionState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle

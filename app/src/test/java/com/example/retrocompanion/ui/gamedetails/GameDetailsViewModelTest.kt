@@ -153,4 +153,72 @@ class GameDetailsViewModelTest {
 
         assertTrue(cacheDao.get(CacheKeys.gameInfo(sampleCredentials.username, 42)) != null)
     }
+
+    @Test
+    fun `search query and filter updates filteredAchievements correctly`() = runTest(mainDispatcherRule.dispatcher) {
+        val achievement1 = com.example.retrocompanion.data.model.GameAchievement(id = 1, title = "First Boss", dateEarned = "2025-01-01")
+        val achievement2 = com.example.retrocompanion.data.model.GameAchievement(id = 2, title = "Secret Pass", dateEarnedHardcore = "2025-01-02", dateEarned = "2025-01-02")
+        val achievement3 = com.example.retrocompanion.data.model.GameAchievement(id = 3, title = "Final Master")
+        val gameInfo = GameInfo(
+            gameId = 42,
+            title = "Sample Game",
+            achievements = mapOf("1" to achievement1, "2" to achievement2, "3" to achievement3)
+        )
+        val api = FakeRetroAchievementsApi(gameInfoResult = { gameInfo })
+        val viewModel = GameDetailsViewModel(
+            Application(),
+            gameId = 42,
+            userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
+            repository = RetroAchievementsRepository(api),
+            responseCache = emptyCache()
+        )
+
+        advanceUntilIdle()
+
+        var state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertEquals(3, state.filteredAchievements.size)
+
+        // Filter: UNLOCKED
+        viewModel.onFilterSelected(AchievementFilter.UNLOCKED)
+        state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertEquals(2, state.filteredAchievements.size)
+
+        // Filter: HARDCORE
+        viewModel.onFilterSelected(AchievementFilter.HARDCORE)
+        state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertEquals(1, state.filteredAchievements.size)
+        assertEquals(2, state.filteredAchievements.first().id)
+
+        // Search: "Secret"
+        viewModel.onFilterSelected(AchievementFilter.ALL)
+        viewModel.onSearchQueryChanged("Secret")
+        state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertEquals(1, state.filteredAchievements.size)
+        assertEquals("Secret Pass", state.filteredAchievements.first().title)
+    }
+
+    @Test
+    fun `favorite state loads from preferences and toggling flips it`() = runTest(mainDispatcherRule.dispatcher) {
+        val gameInfo = GameInfo(gameId = 42, title = "Sample Game")
+        val api = FakeRetroAchievementsApi(gameInfoResult = { gameInfo })
+        val credentialsSource = FakeUserCredentialsSource(sampleCredentials, initialFavorites = setOf(42))
+        val viewModel = GameDetailsViewModel(
+            Application(),
+            gameId = 42,
+            userPreferencesRepository = credentialsSource,
+            repository = RetroAchievementsRepository(api),
+            responseCache = emptyCache()
+        )
+
+        advanceUntilIdle()
+
+        var state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertTrue(state.isFavorite)
+
+        viewModel.toggleFavorite()
+        advanceUntilIdle()
+
+        state = viewModel.uiState.value as GameDetailsUiState.Success
+        assertEquals(false, state.isFavorite)
+    }
 }

@@ -1,9 +1,11 @@
 package com.example.retrocompanion.data.repository
 
 import com.example.retrocompanion.data.model.GameInfo
+import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.UserCredentials
+import com.example.retrocompanion.data.model.UserProfileSummary
 import com.example.retrocompanion.data.remote.RetroAchievementsApi
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.remote.RetrofitClient
@@ -13,6 +15,18 @@ import java.io.IOException
 class RetroAchievementsRepository(
     private val api: RetroAchievementsApi = RetrofitClient.api
 ) {
+
+    /** Fetches the user profile summary (points, rank, avatar, motto). */
+    suspend fun getUserSummary(
+        credentials: UserCredentials
+    ): Result<UserProfileSummary> = safeApiCall {
+        require(credentials.isValid) { "User credentials are invalid or missing." }
+        api.getUserSummary(
+            authUser = credentials.username,
+            apiKey = credentials.apiKey,
+            targetUser = credentials.username
+        )
+    }
 
     /**
      * Fetches recently played games for the user.
@@ -69,6 +83,32 @@ class RetroAchievementsRepository(
     }
 
     /**
+     * Fetches the user's full game library with completion progress, paging through
+     * API_GetUserCompletionProgress.php until the account's full total is reached (or a safety
+     * cap of [MAX_LIBRARY_PAGES] pages, comfortably covering virtually any real account).
+     */
+    suspend fun getAllGamesProgress(
+        credentials: UserCredentials
+    ): Result<List<GameProgressSummary>> = safeApiCall {
+        require(credentials.isValid) { "User credentials are invalid or missing." }
+        val accumulated = mutableListOf<GameProgressSummary>()
+        var offset = 0
+        repeat(MAX_LIBRARY_PAGES) {
+            val page = api.getUserCompletionProgress(
+                authUser = credentials.username,
+                apiKey = credentials.apiKey,
+                targetUser = credentials.username,
+                count = LIBRARY_PAGE_SIZE,
+                offset = offset
+            )
+            accumulated += page.results
+            if (page.results.isEmpty() || accumulated.size >= page.total) return@safeApiCall accumulated
+            offset += page.results.size
+        }
+        accumulated
+    }
+
+    /**
      * Runs [block], translating network/HTTP failures into the distinct [RetroApiException]
      * subtypes so callers can tell a rejected key, rate limiting, no network, and an unexpected
      * response apart.
@@ -88,5 +128,7 @@ class RetroAchievementsRepository(
     companion object {
         private const val SEVEN_DAYS_IN_MINUTES = 10080
         private const val MAX_RECENTLY_PLAYED_COUNT = 50
+        private const val LIBRARY_PAGE_SIZE = 500
+        private const val MAX_LIBRARY_PAGES = 3
     }
 }

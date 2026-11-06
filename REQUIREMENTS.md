@@ -39,6 +39,15 @@ functional requirements; see the linked issues for full acceptance criteria.
    — Coil-loaded images with placeholders for missing paths; image host confirmed against current
    docs/live response before shipping.
 
+## M4: Offline Caching & Game Library
+
+10. **Offline response caching** — `ResponseCache` backed by DataStore (`CacheDao`) persists
+    API responses as JSON. Implements stale-while-revalidate: stale data displays immediately
+    with a relative-time banner while fresh data revalidates in the background or when network fails.
+11. **Game library screen** — Full game completion progress via `API_GetUserCompletionProgress.php`,
+    paged through up to a safety cap; client-side title search; progress indicators; reachable
+    via the bottom navigation "Library" tab; tapping a game opens Game Details.
+
 ## Non-functional requirements
 
 - The real RetroAchievements API key is never requested, printed, committed, or present in test

@@ -6,11 +6,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeUserCredentialsSource(
-    initial: UserCredentials = UserCredentials()
+    initial: UserCredentials = UserCredentials(),
+    initialFavorites: Set<Int> = emptySet()
 ) : UserCredentialsSource {
 
     private val state = MutableStateFlow(initial)
     override val userCredentialsFlow: Flow<UserCredentials> = state
+
+    private val favoritesState = MutableStateFlow(initialFavorites)
+    override val favoriteGameIdsFlow: Flow<Set<Int>> = favoritesState
 
     var lastSavedUsername: String? = null
         private set
@@ -28,5 +32,16 @@ class FakeUserCredentialsSource(
     override suspend fun clearCredentials() {
         clearCount++
         state.value = UserCredentials()
+        favoritesState.value = emptySet()
+    }
+
+    override suspend fun toggleFavoriteGame(gameId: Int) {
+        val current = favoritesState.value.toMutableSet()
+        if (current.contains(gameId)) {
+            current.remove(gameId)
+        } else {
+            current.add(gameId)
+        }
+        favoritesState.value = current
     }
 }

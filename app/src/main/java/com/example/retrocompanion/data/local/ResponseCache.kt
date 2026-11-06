@@ -7,16 +7,18 @@ data class Cached<T>(val data: T, val timestampMillis: Long)
 
 /** Builds the "<username>:<category>[:<extra>]" keys this cache's entries are stored under. */
 object CacheKeys {
+    fun userSummary(username: String) = "$username:user_summary"
     fun recentlyPlayed(username: String) = "$username:recently_played"
     fun recentUnlocks(username: String) = "$username:recent_unlocks"
     fun gameInfo(username: String, gameId: Int) = "$username:game_info:$gameId"
+    fun gameLibrary(username: String) = "$username:game_library"
 }
 
 /**
  * Reads/writes cached API responses as JSON (the same Gson setup already used to parse them off
- * the wire — see [com.example.retrocompanion.data.remote.RetrofitClient]), backed by a Room
- * [CacheDao]. [CacheDao] is a plain interface, so this is unit-testable with an in-memory fake,
- * with no Room/Robolectric dependency needed in tests.
+ * the wire — see [com.example.retrocompanion.data.remote.RetrofitClient]), backed by a [CacheDao]
+ * (in production, [DataStoreCacheDao]). [CacheDao] is a plain interface, so this is unit-testable
+ * with an in-memory fake, with no Android dependency needed in tests.
  */
 class ResponseCache(
     private val dao: CacheDao,

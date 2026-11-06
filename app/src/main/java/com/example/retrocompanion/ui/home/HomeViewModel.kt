@@ -11,8 +11,11 @@ import com.example.retrocompanion.data.local.UserPreferencesRepository
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCredentials
+import com.example.retrocompanion.data.model.UserProfileSummary
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.repository.RetroAchievementsRepository
+import com.example.retrocompanion.ui.common.CredentialsStatus
+import com.example.retrocompanion.ui.common.SectionState
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,13 +50,13 @@ class HomeViewModel @JvmOverloads constructor(
                     _uiState.update {
                         it.copy(credentialsStatus = CredentialsStatus.Present, username = credentials.username)
                     }
-                    loadBothSections(credentials)
+                    loadAllSections(credentials)
                 }
             }
         }
     }
 
-    /** Reloads both sections in parallel; drives the pull-to-refresh spinner. */
+    /** Reloads all sections in parallel; drives the pull-to-refresh spinner. */
     fun refresh() {
         if (!currentCredentials.isValid) {
             _uiState.update { it.copy(credentialsStatus = CredentialsStatus.Missing) }
@@ -61,9 +64,15 @@ class HomeViewModel @JvmOverloads constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
-            loadBothSections(currentCredentials)
+            loadAllSections(currentCredentials)
             _uiState.update { it.copy(isRefreshing = false) }
         }
+    }
+
+    fun retryUserProfile() {
+        val credentials = currentCredentials
+        if (!credentials.isValid) return
+        viewModelScope.launch { loadUserProfile(credentials) }
     }
 
     fun retryRecentlyPlayed() {
@@ -78,11 +87,22 @@ class HomeViewModel @JvmOverloads constructor(
         viewModelScope.launch { loadRecentUnlocks(credentials) }
     }
 
-    private suspend fun loadBothSections(credentials: UserCredentials) = coroutineScope {
+    private suspend fun loadAllSections(credentials: UserCredentials) = coroutineScope {
+        val profileJob = launch { loadUserProfile(credentials) }
         val gamesJob = launch { loadRecentlyPlayed(credentials) }
         val unlocksJob = launch { loadRecentUnlocks(credentials) }
+        profileJob.join()
         gamesJob.join()
         unlocksJob.join()
+    }
+
+    private suspend fun loadUserProfile(credentials: UserCredentials) {
+        loadSection(
+            cacheKey = CacheKeys.userSummary(credentials.username),
+            cacheType = UserProfileSummary::class.java,
+            fetch = { repository.getUserSummary(credentials) },
+            applyState = { state -> _uiState.update { it.copy(userProfile = state) } }
+        )
     }
 
     private suspend fun loadRecentlyPlayed(credentials: UserCredentials) {

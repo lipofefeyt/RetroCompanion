@@ -2,7 +2,6 @@ package com.example.retrocompanion.ui
 
 import android.app.Application
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -26,14 +25,20 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.retrocompanion.ui.gamedetails.GameDetailsScreen
 import com.example.retrocompanion.ui.gamedetails.GameDetailsViewModel
-import com.example.retrocompanion.ui.home.CredentialsStatus
+import com.example.retrocompanion.ui.common.CredentialsStatus
 import com.example.retrocompanion.ui.home.HomeScreen
 import com.example.retrocompanion.ui.home.HomeViewModel
+import com.example.retrocompanion.ui.library.GameLibraryScreen
+import com.example.retrocompanion.ui.library.GameLibraryViewModel
+import com.example.retrocompanion.ui.profile.ProfileScreen
+import com.example.retrocompanion.ui.profile.ProfileViewModel
 import com.example.retrocompanion.ui.settings.SettingsScreen
 import com.example.retrocompanion.ui.settings.SettingsViewModel
 
 sealed class Screen(val route: String, val title: String) {
     data object Home : Screen("home", "Home")
+    data object Library : Screen("library", "Library")
+    data object Profile : Screen("profile", "Profile")
     data object Settings : Screen("settings", "Settings")
     data object GameDetails : Screen("gameDetails/{gameId}", "Game Details") {
         const val ARG_GAME_ID = "gameId"
@@ -44,7 +49,9 @@ sealed class Screen(val route: String, val title: String) {
 @Composable
 fun MainScreen(
     homeViewModel: HomeViewModel,
-    settingsViewModel: SettingsViewModel
+    settingsViewModel: SettingsViewModel,
+    gameLibraryViewModel: GameLibraryViewModel,
+    profileViewModel: ProfileViewModel
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -76,6 +83,8 @@ fun MainScreen(
 
     val items = listOf(
         Screen.Home,
+        Screen.Library,
+        Screen.Profile,
         Screen.Settings
     )
 
@@ -98,7 +107,12 @@ fun MainScreen(
                         },
                         icon = {
                             Text(
-                                text = if (screen == Screen.Home) "🏠" else "⚙️"
+                                text = when (screen) {
+                                    Screen.Home -> "🏠"
+                                    Screen.Library -> "📚"
+                                    Screen.Profile -> "👤"
+                                    else -> "⚙️"
+                                }
                             )
                         },
                         label = { Text(screen.title) }
@@ -126,6 +140,37 @@ fun MainScreen(
                     },
                     onGameClick = { gameId ->
                         navController.navigate(Screen.GameDetails.createRoute(gameId))
+                    }
+                )
+            }
+            composable(Screen.Library.route) {
+                GameLibraryScreen(
+                    viewModel = gameLibraryViewModel,
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onGameClick = { gameId ->
+                        navController.navigate(Screen.GameDetails.createRoute(gameId))
+                    }
+                )
+            }
+            composable(Screen.Profile.route) {
+                ProfileScreen(
+                    viewModel = profileViewModel,
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }

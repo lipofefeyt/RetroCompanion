@@ -50,8 +50,8 @@ RetroAchievements username and Web API key and tap **Save**. The app then shows 
 - Recently played games and achievement progress.
 - Achievements unlocked in the last 7 days.
 
-Settings is reachable at any time from the bottom navigation, and has a **Clear** action to remove
-stored credentials.
+The bottom navigation provides access to **Home**, your full **Library** (with title search and
+progress tracking), and **Settings** (with a **Clear** action to remove stored credentials).
 
 ## Project layout
 

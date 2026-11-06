@@ -3,6 +3,8 @@ package com.example.retrocompanion.testutil
 import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
+import com.example.retrocompanion.data.model.UserCompletionProgressPage
+import com.example.retrocompanion.data.model.UserProfileSummary
 import com.example.retrocompanion.data.remote.RetroAchievementsApi
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -20,10 +22,21 @@ fun httpException(code: Int): HttpException =
  * real exception-mapping logic.
  */
 class FakeRetroAchievementsApi(
+    var userSummaryResult: suspend () -> UserProfileSummary = { UserProfileSummary() },
     var recentlyPlayedGamesResult: suspend () -> List<RecentlyPlayedGame> = { emptyList() },
     var recentAchievementsResult: suspend () -> List<RecentUnlock> = { emptyList() },
-    var gameInfoResult: suspend () -> GameInfo = { GameInfo() }
+    var gameInfoResult: suspend () -> GameInfo = { GameInfo() },
+    var completionProgressResult: suspend (count: Int, offset: Int) -> UserCompletionProgressPage =
+        { _, _ -> UserCompletionProgressPage() }
 ) : RetroAchievementsApi {
+
+    override suspend fun getUserSummary(
+        authUser: String,
+        apiKey: String,
+        targetUser: String,
+        gamesCount: Int,
+        achievementsCount: Int
+    ): UserProfileSummary = userSummaryResult()
 
     override suspend fun getRecentlyPlayedGames(
         authUser: String,
@@ -45,4 +58,12 @@ class FakeRetroAchievementsApi(
         targetUser: String,
         gameId: Int
     ): GameInfo = gameInfoResult()
+
+    override suspend fun getUserCompletionProgress(
+        authUser: String,
+        apiKey: String,
+        targetUser: String,
+        count: Int,
+        offset: Int
+    ): UserCompletionProgressPage = completionProgressResult(count, offset)
 }

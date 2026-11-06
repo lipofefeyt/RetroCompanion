@@ -16,6 +16,7 @@ import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -30,8 +31,37 @@ class GameDetailsViewModel(
     private val _uiState = MutableStateFlow<GameDetailsUiState>(GameDetailsUiState.Loading)
     val uiState: StateFlow<GameDetailsUiState> = _uiState.asStateFlow()
 
+    private var isCurrentlyFavorite: Boolean = false
+
     init {
+        viewModelScope.launch {
+            userPreferencesRepository.favoriteGameIdsFlow.collectLatest { ids ->
+                isCurrentlyFavorite = ids.contains(gameId)
+                val currentState = _uiState.value
+                if (currentState is GameDetailsUiState.Success) {
+                    _uiState.value = currentState.copy(isFavorite = isCurrentlyFavorite)
+                }
+            }
+        }
         load()
+    }
+
+    fun toggleFavorite() {
+        viewModelScope.launch { userPreferencesRepository.toggleFavoriteGame(gameId) }
+    }
+
+    fun onSearchQueryChanged(query: String) {
+        val currentState = _uiState.value
+        if (currentState is GameDetailsUiState.Success) {
+            _uiState.value = currentState.copy(searchQuery = query)
+        }
+    }
+
+    fun onFilterSelected(filter: AchievementFilter) {
+        val currentState = _uiState.value
+        if (currentState is GameDetailsUiState.Success) {
+            _uiState.value = currentState.copy(selectedFilter = filter)
+        }
     }
 
     fun retry() = load()
@@ -50,7 +80,12 @@ class GameDetailsViewModel(
             val cacheKey = CacheKeys.gameInfo(credentials.username, gameId)
             val cached = responseCache.read<GameInfo>(cacheKey, GameInfo::class.java)
             _uiState.value = if (cached != null) {
-                GameDetailsUiState.Success(cached.data, isStale = true, cachedAtMillis = cached.timestampMillis)
+                GameDetailsUiState.Success(
+                    cached.data,
+                    isStale = true,
+                    cachedAtMillis = cached.timestampMillis,
+                    isFavorite = isCurrentlyFavorite
+                )
             } else {
                 GameDetailsUiState.Loading
             }
@@ -59,11 +94,16 @@ class GameDetailsViewModel(
             _uiState.value = if (result.isSuccess) {
                 val gameInfo = result.getOrThrow()
                 responseCache.write(cacheKey, gameInfo)
-                GameDetailsUiState.Success(gameInfo, isStale = false)
+                GameDetailsUiState.Success(gameInfo, isStale = false, isFavorite = isCurrentlyFavorite)
             } else {
                 val error = result.exceptionOrNull()!!
                 if (cached != null) {
-                    GameDetailsUiState.Success(cached.data, isStale = true, cachedAtMillis = cached.timestampMillis)
+                    GameDetailsUiState.Success(
+                        cached.data,
+                        isStale = true,
+                        cachedAtMillis = cached.timestampMillis,
+                        isFavorite = isCurrentlyFavorite
+                    )
                 } else {
                     GameDetailsUiState.Error(
                         message = error.localizedMessage ?: "Failed to load game details.",

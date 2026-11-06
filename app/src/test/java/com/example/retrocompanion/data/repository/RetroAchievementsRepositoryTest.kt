@@ -1,6 +1,8 @@
 package com.example.retrocompanion.data.repository
 
+import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.RecentUnlock
+import com.example.retrocompanion.data.model.UserCompletionProgressPage
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
 import kotlinx.coroutines.test.runTest
@@ -24,5 +26,47 @@ class RetroAchievementsRepositoryTest {
         val result = repository.getRecentUnlocks(sampleCredentials).getOrThrow()
 
         assertEquals(listOf("Newest", "Middle", "Oldest"), result.map { it.title })
+    }
+
+    @Test
+    fun `getAllGamesProgress pages through until Total is reached`() = runTest {
+        val allGames = (1..600).map { GameProgressSummary(gameId = it, title = "Game $it") }
+        val offsetsRequested = mutableListOf<Int>()
+        val api = FakeRetroAchievementsApi(
+            completionProgressResult = { count, offset ->
+                offsetsRequested += offset
+                UserCompletionProgressPage(
+                    count = count,
+                    total = allGames.size,
+                    results = allGames.drop(offset).take(count)
+                )
+            }
+        )
+
+        val result = RetroAchievementsRepository(api).getAllGamesProgress(sampleCredentials).getOrThrow()
+
+        assertEquals(600, result.size)
+        assertEquals(listOf(0, 500), offsetsRequested)
+    }
+
+    @Test
+    fun `getAllGamesProgress stops at the safety cap instead of paging forever`() = runTest {
+        var callCount = 0
+        val api = FakeRetroAchievementsApi(
+            completionProgressResult = { count, offset ->
+                callCount++
+                // Always claims a huge total, so without a safety cap this would page forever.
+                UserCompletionProgressPage(
+                    count = count,
+                    total = 1_000_000,
+                    results = List(count) { GameProgressSummary(gameId = offset + it, title = "Game ${offset + it}") }
+                )
+            }
+        )
+
+        val result = RetroAchievementsRepository(api).getAllGamesProgress(sampleCredentials).getOrThrow()
+
+        assertEquals(3, callCount)
+        assertEquals(1500, result.size)
     }
 }

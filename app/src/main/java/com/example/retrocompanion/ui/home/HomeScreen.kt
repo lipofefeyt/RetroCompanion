@@ -12,7 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -25,13 +34,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
+import com.example.retrocompanion.data.model.UserProfileSummary
+import com.example.retrocompanion.ui.common.CredentialsStatus
+import com.example.retrocompanion.ui.common.SectionState
 import com.example.retrocompanion.ui.components.EmptySectionCard
 import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.MissingCredentialsScreen
+import com.example.retrocompanion.ui.components.NetworkImage
 import com.example.retrocompanion.ui.components.RecentUnlockCard
 import com.example.retrocompanion.ui.components.RecentlyPlayedCard
 import com.example.retrocompanion.ui.components.SectionErrorCard
@@ -63,12 +77,13 @@ fun HomeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
                 actions = {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             )
         },
@@ -100,35 +115,12 @@ fun HomeScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            item {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    shape = MaterialTheme.shapes.large,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = "Hello, ${uiState.username}!",
-                                                style = MaterialTheme.typography.titleLarge,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Text(
-                                                text = "Here is your RetroAchievements activity",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            userProfileSection(
+                                state = uiState.userProfile,
+                                defaultUsername = uiState.username,
+                                onRetry = { viewModel.retryUserProfile() },
+                                onGoToSettings = onNavigateToSettings
+                            )
 
                             item {
                                 Text(
@@ -248,6 +240,113 @@ private fun LazyListScope.recentUnlocksSection(
             } else {
                 items(items = state.data, key = { "${it.achievementId}_${it.date}" }) { unlock ->
                     RecentUnlockCard(unlock = unlock)
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.userProfileSection(
+    state: SectionState<UserProfileSummary>,
+    defaultUsername: String,
+    onRetry: () -> Unit,
+    onGoToSettings: () -> Unit
+) {
+    when (state) {
+        is SectionState.Loading -> item { SectionLoadingRow() }
+        is SectionState.Error -> item {
+            SectionErrorCard(
+                message = state.message,
+                showGoToSettings = state.isInvalidApiKey,
+                onRetry = onRetry,
+                onGoToSettings = onGoToSettings
+            )
+        }
+        is SectionState.Success -> item {
+            val profile = state.data
+            val displayName = profile.user.ifBlank { defaultUsername.ifBlank { "Gamer" } }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (state.isStale && state.cachedAtMillis != null) {
+                        StaleDataBanner(relativeTime = formatRelativeTime(state.cachedAtMillis))
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        NetworkImage(
+                            url = profile.avatarUrl,
+                            contentDescription = displayName,
+                            placeholderGlyph = "👤",
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = displayName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (!profile.motto.isNullOrBlank()) {
+                                Text(
+                                    text = "\"${profile.motto}\"",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontStyle = FontStyle.Italic,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            profile.rank?.let { rank ->
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "Rank #$rank",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f).padding(end = 6.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = "Points", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = "🏆 ${profile.totalPoints}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                        Surface(
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f).padding(start = 6.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = "RetroPoints", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = "🎯 ${profile.totalTruePoints}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                            }
+                        }
+                    }
                 }
             }
         }

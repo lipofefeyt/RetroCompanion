@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
  */
 interface UserCredentialsSource {
     val userCredentialsFlow: Flow<UserCredentials>
+    val favoriteGameIdsFlow: Flow<Set<Int>>
     suspend fun saveUserCredentials(username: String, apiKey: String)
     suspend fun clearCredentials()
+    suspend fun toggleFavoriteGame(gameId: Int)
 }

@@ -10,6 +10,8 @@ import com.example.retrocompanion.data.model.UserCredentials
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "retro_user_prefs")
 
 /**
@@ -39,6 +41,7 @@ class UserPreferencesRepository(
     private object PreferencesKeys {
         val USERNAME = stringPreferencesKey("ra_username_enc")
         val API_KEY = stringPreferencesKey("ra_api_key_enc")
+        val PINNED_GAME_IDS = stringSetPreferencesKey("pinned_game_ids")
     }
 
     override val userCredentialsFlow: Flow<UserCredentials> = context.dataStore.data
@@ -48,6 +51,14 @@ class UserPreferencesRepository(
                 encryptedApiKey = preferences[PreferencesKeys.API_KEY],
                 cipher = cipher
             )
+        }
+
+    override val favoriteGameIdsFlow: Flow<Set<Int>> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.PINNED_GAME_IDS]
+                ?.mapNotNull { it.toIntOrNull() }
+                ?.toSet()
+                .orEmpty()
         }
 
     override suspend fun saveUserCredentials(username: String, apiKey: String) {
@@ -61,6 +72,20 @@ class UserPreferencesRepository(
         context.dataStore.edit { preferences ->
             preferences.remove(PreferencesKeys.USERNAME)
             preferences.remove(PreferencesKeys.API_KEY)
+            preferences.remove(PreferencesKeys.PINNED_GAME_IDS)
+        }
+    }
+
+    override suspend fun toggleFavoriteGame(gameId: Int) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[PreferencesKeys.PINNED_GAME_IDS].orEmpty().toMutableSet()
+            val idString = gameId.toString()
+            if (current.contains(idString)) {
+                current.remove(idString)
+            } else {
+                current.add(idString)
+            }
+            preferences[PreferencesKeys.PINNED_GAME_IDS] = current
         }
     }
 }

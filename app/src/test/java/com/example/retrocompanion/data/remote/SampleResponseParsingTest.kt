@@ -3,6 +3,7 @@ package com.example.retrocompanion.data.remote
 import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
+import com.example.retrocompanion.data.model.UserCompletionProgressPage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.junit.Assert.assertEquals
@@ -96,5 +97,33 @@ class SampleResponseParsingTest {
         assertEquals(false, unearned.isEarnedHardcore)
         assertNull(unearned.dateEarned)
         assertNull(unearned.dateEarnedHardcore)
+    }
+
+    @Test
+    fun `parses sample user completion progress response`() {
+        val json = readResource("sample_user_completion_progress.json")
+        val page = gson.fromJson(json, UserCompletionProgressPage::class.java)
+
+        assertEquals(2, page.count)
+        assertEquals(2, page.total)
+        assertEquals(2, page.results.size)
+
+        val ffOrigins = page.results[0]
+        assertEquals(11332, ffOrigins.gameId)
+        assertEquals("Final Fantasy Origins", ffOrigins.title)
+        assertEquals("PlayStation", ffOrigins.consoleName)
+        assertEquals(119, ffOrigins.maxPossible)
+        assertEquals(38, ffOrigins.numAwarded)
+        assertEquals(31, ffOrigins.progressPercentage)
+        assertEquals("https://media.retroachievements.org/Images/060249.png", ffOrigins.iconUrl)
+
+        val sonic = page.results[1]
+        assertEquals(1448, sonic.gameId)
+        assertEquals("Sonic the Hedgehog", sonic.title)
+        assertEquals("Mega Drive", sonic.consoleName)
+        assertEquals(32, sonic.maxPossible)
+        assertEquals(16, sonic.numAwarded)
+        assertEquals(50, sonic.progressPercentage)
+        assertEquals("https://media.retroachievements.org/Images/001448.png", sonic.iconUrl)
     }
 }

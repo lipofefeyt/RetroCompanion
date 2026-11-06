@@ -14,14 +14,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star as OutlinedStar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -67,6 +74,17 @@ fun GameDetailsScreen(
                         )
                     }
                 },
+                actions = {
+                    val successState = uiState as? GameDetailsUiState.Success
+                    if (successState != null) {
+                        IconButton(onClick = { viewModel.toggleFavorite() }) {
+                            Icon(
+                                imageVector = if (successState.isFavorite) Icons.Filled.Star else Icons.Outlined.OutlinedStar,
+                                contentDescription = if (successState.isFavorite) "Remove from favorites" else "Add to favorites"
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -95,6 +113,11 @@ fun GameDetailsScreen(
 
                 is GameDetailsUiState.Success -> {
                     val game = state.gameInfo
+                    val totalCount = game.achievements?.size ?: 0
+                    val unlockedCount = game.numAwardedToUser
+                    val progressFraction = if (totalCount > 0) unlockedCount.toFloat() / totalCount else 0f
+                    val filteredList = state.filteredAchievements
+
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
@@ -113,7 +136,7 @@ fun GameDetailsScreen(
                                     modifier = Modifier.size(80.dp)
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = game.title,
                                         style = MaterialTheme.typography.titleLarge,
@@ -126,35 +149,89 @@ fun GameDetailsScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "${game.numAwardedToUser} / ${game.achievements?.size ?: 0} unlocked",
+                                        text = "$unlockedCount / $totalCount unlocked",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.primary
                                     )
+                                    if (totalCount > 0) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        LinearProgressIndicator(
+                                            progress = { progressFraction },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(6.dp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (totalCount > 0) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = state.searchQuery,
+                                    onValueChange = { viewModel.onSearchQueryChanged(it) },
+                                    label = { Text("Search achievements") },
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        if (state.searchQuery.isNotEmpty()) {
+                                            IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Clear,
+                                                    contentDescription = "Clear search"
+                                                )
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            item {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(AchievementFilter.entries.size) { index ->
+                                        val filter = AchievementFilter.entries[index]
+                                        FilterChip(
+                                            selected = state.selectedFilter == filter,
+                                            onClick = { viewModel.onFilterSelected(filter) },
+                                            label = { Text(filter.label) }
+                                        )
+                                    }
                                 }
                             }
                         }
 
                         item {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Achievements",
+                                text = "Achievements (${filteredList.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
 
-                        val achievements = game.achievementsSortedForDisplay
-                        if (achievements.isEmpty()) {
+                        if (filteredList.isEmpty()) {
                             item {
                                 EmptySectionCard(
-                                    title = "No Achievements",
-                                    subtitle = "This game has no tracked achievements."
+                                    title = if (state.searchQuery.isBlank()) "No Achievements" else "No Matches",
+                                    subtitle = if (state.searchQuery.isBlank()) {
+                                        "No achievements match the selected filter."
+                                    } else {
+                                        "No achievements match \"${state.searchQuery}\"."
+                                    }
                                 )
                             }
                         } else {
-                            items(items = achievements, key = { it.id }) { achievement ->
+                            items(items = filteredList, key = { it.id }) { achievement ->
                                 AchievementRow(achievement)
                             }
                         }
