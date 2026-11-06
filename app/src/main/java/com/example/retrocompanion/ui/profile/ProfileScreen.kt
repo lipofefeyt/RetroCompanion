@@ -36,7 +36,9 @@ import com.example.retrocompanion.ui.common.SectionState
 import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.MissingCredentialsScreen
 import com.example.retrocompanion.ui.components.NetworkImage
+import com.example.retrocompanion.ui.components.RefreshCompletionHaptic
 import com.example.retrocompanion.ui.components.SectionErrorCard
+import com.example.retrocompanion.ui.components.StatTile
 import com.example.retrocompanion.ui.components.StaleDataBanner
 import com.example.retrocompanion.ui.components.formatRelativeTime
 
@@ -48,6 +50,7 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    RefreshCompletionHaptic(isRefreshing = uiState.isRefreshing)
 
     Scaffold(
         topBar = {
@@ -150,29 +153,12 @@ private fun ProfileHeader(summary: UserProfileSummary, modifier: Modifier = Modi
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ProfileStat(label = "Points", value = summary.totalPoints.toString())
-                ProfileStat(label = "True Points", value = summary.totalTruePoints.toString())
+                StatTile(label = "Points", value = summary.totalPoints.toString())
+                StatTile(label = "True Points", value = summary.totalTruePoints.toString())
                 summary.rank?.let { rank ->
-                    ProfileStat(label = "Rank", value = "#$rank")
+                    StatTile(label = "Rank", value = "#$rank")
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ProfileStat(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

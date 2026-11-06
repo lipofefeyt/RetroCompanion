@@ -1,6 +1,9 @@
 package com.example.retrocompanion.ui
 
 import android.app.Application
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -34,10 +37,13 @@ import com.example.retrocompanion.ui.profile.ProfileScreen
 import com.example.retrocompanion.ui.profile.ProfileViewModel
 import com.example.retrocompanion.ui.settings.SettingsScreen
 import com.example.retrocompanion.ui.settings.SettingsViewModel
+import com.example.retrocompanion.ui.stats.StatsScreen
+import com.example.retrocompanion.ui.stats.StatsViewModel
 
 sealed class Screen(val route: String, val title: String) {
     data object Home : Screen("home", "Home")
     data object Library : Screen("library", "Library")
+    data object Stats : Screen("stats", "Stats")
     data object Profile : Screen("profile", "Profile")
     data object Settings : Screen("settings", "Settings")
     data object GameDetails : Screen("gameDetails/{gameId}", "Game Details") {
@@ -51,7 +57,8 @@ fun MainScreen(
     homeViewModel: HomeViewModel,
     settingsViewModel: SettingsViewModel,
     gameLibraryViewModel: GameLibraryViewModel,
-    profileViewModel: ProfileViewModel
+    profileViewModel: ProfileViewModel,
+    statsViewModel: StatsViewModel
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -84,6 +91,7 @@ fun MainScreen(
     val items = listOf(
         Screen.Home,
         Screen.Library,
+        Screen.Stats,
         Screen.Profile,
         Screen.Settings
     )
@@ -110,6 +118,7 @@ fun MainScreen(
                                 text = when (screen) {
                                     Screen.Home -> "🏠"
                                     Screen.Library -> "📚"
+                                    Screen.Stats -> "📊"
                                     Screen.Profile -> "👤"
                                     else -> "⚙️"
                                 }
@@ -124,7 +133,11 @@ fun MainScreen(
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(tween(200)) },
+            exitTransition = { fadeOut(tween(200)) },
+            popEnterTransition = { fadeIn(tween(200)) },
+            popExitTransition = { fadeOut(tween(200)) }
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
@@ -157,6 +170,20 @@ fun MainScreen(
                     },
                     onGameClick = { gameId ->
                         navController.navigate(Screen.GameDetails.createRoute(gameId))
+                    }
+                )
+            }
+            composable(Screen.Stats.route) {
+                StatsScreen(
+                    viewModel = statsViewModel,
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }

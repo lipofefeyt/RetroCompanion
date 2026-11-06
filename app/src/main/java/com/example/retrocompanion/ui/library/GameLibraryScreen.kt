@@ -48,6 +48,7 @@ import com.example.retrocompanion.ui.components.EmptySectionCard
 import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.MissingCredentialsScreen
 import com.example.retrocompanion.ui.components.NetworkImage
+import com.example.retrocompanion.ui.components.RefreshCompletionHaptic
 import com.example.retrocompanion.ui.components.SectionErrorCard
 import com.example.retrocompanion.ui.components.StaleDataBanner
 import com.example.retrocompanion.ui.components.formatRelativeTime
@@ -61,6 +62,7 @@ fun GameLibraryScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    RefreshCompletionHaptic(isRefreshing = uiState.isRefreshing)
 
     Scaffold(
         topBar = {
@@ -168,7 +170,8 @@ fun GameLibraryScreen(
                                                         "Play some games on RetroAchievements to see your library here."
                                                     } else {
                                                         "No games match \"${uiState.searchQuery}\"."
-                                                    }
+                                                    },
+                                                    icon = if (uiState.searchQuery.isBlank()) "🎮" else "🔍"
                                                 )
                                             }
                                         } else {

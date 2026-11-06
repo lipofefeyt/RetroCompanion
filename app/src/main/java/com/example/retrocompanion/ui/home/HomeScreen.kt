@@ -50,6 +50,7 @@ import com.example.retrocompanion.ui.components.MissingCredentialsScreen
 import com.example.retrocompanion.ui.components.NetworkImage
 import com.example.retrocompanion.ui.components.RecentUnlockCard
 import com.example.retrocompanion.ui.components.RecentlyPlayedCard
+import com.example.retrocompanion.ui.components.RefreshCompletionHaptic
 import com.example.retrocompanion.ui.components.SectionErrorCard
 import com.example.retrocompanion.ui.components.SectionLoadingRow
 import com.example.retrocompanion.ui.components.StaleDataBanner
@@ -64,6 +65,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    RefreshCompletionHaptic(isRefreshing = uiState.isRefreshing)
 
     Scaffold(
         topBar = {
@@ -203,7 +205,8 @@ private fun LazyListScope.recentlyPlayedSection(
                 item {
                     EmptySectionCard(
                         title = "No Recently Played Games",
-                        subtitle = "Play a game on RetroAchievements to see your game progress here."
+                        subtitle = "Play a game on RetroAchievements to see your game progress here.",
+                        icon = "🎮"
                     )
                 }
             } else {
@@ -269,7 +272,8 @@ private fun LazyListScope.recentUnlocksSection(
                             "You haven't unlocked any achievements in the past 7 days. Time for a gaming session!"
                         } else {
                             "No unlocks match \"$searchQuery\"."
-                        }
+                        },
+                        icon = if (searchQuery.isBlank()) "🏆" else "🔍"
                     )
                 }
             } else {

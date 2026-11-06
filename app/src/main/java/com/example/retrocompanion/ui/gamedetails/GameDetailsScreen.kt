@@ -234,7 +234,8 @@ fun GameDetailsScreen(
                                         "No achievements match the selected filter."
                                     } else {
                                         "No achievements match \"${state.searchQuery}\"."
-                                    }
+                                    },
+                                    icon = if (state.searchQuery.isBlank()) "🏆" else "🔍"
                                 )
                             }
                         } else {
