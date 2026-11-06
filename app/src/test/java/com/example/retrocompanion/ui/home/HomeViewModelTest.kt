@@ -219,4 +219,28 @@ class HomeViewModelTest {
 
         assertNotNull(cacheDao.get(CacheKeys.recentlyPlayed(sampleCredentials.username)))
     }
+
+    @Test
+    fun `unlocks search query filters recent unlocks by title, case-insensitively`() = runTest(mainDispatcherRule.dispatcher) {
+        val unlocks = listOf(
+            RecentUnlock(achievementId = 1, title = "Sonic Speedster"),
+            RecentUnlock(achievementId = 2, title = "Final Boss Down"),
+            RecentUnlock(achievementId = 3, title = "Sonic Collector")
+        )
+        val api = FakeRetroAchievementsApi(recentAchievementsResult = { unlocks })
+        val viewModel = HomeViewModel(
+            Application(),
+            FakeUserCredentialsSource(sampleCredentials),
+            RetroAchievementsRepository(api),
+            emptyCache()
+        )
+        advanceUntilIdle()
+
+        viewModel.onUnlocksSearchQueryChanged("sonic")
+
+        assertEquals(
+            listOf("Sonic Speedster", "Sonic Collector"),
+            viewModel.uiState.value.filteredRecentUnlocks.map { it.title }
+        )
+    }
 }

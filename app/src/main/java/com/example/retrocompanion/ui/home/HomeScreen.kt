@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -23,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -162,6 +164,9 @@ fun HomeScreen(
 
                             recentUnlocksSection(
                                 state = uiState.recentUnlocks,
+                                filteredUnlocks = uiState.filteredRecentUnlocks,
+                                searchQuery = uiState.unlocksSearchQuery,
+                                onSearchQueryChanged = { viewModel.onUnlocksSearchQueryChanged(it) },
                                 onRetry = { viewModel.retryRecentUnlocks() },
                                 onGoToSettings = onNavigateToSettings
                             )
@@ -212,6 +217,9 @@ private fun LazyListScope.recentlyPlayedSection(
 
 private fun LazyListScope.recentUnlocksSection(
     state: SectionState<List<RecentUnlock>>,
+    filteredUnlocks: List<RecentUnlock>,
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
     onRetry: () -> Unit,
     onGoToSettings: () -> Unit
 ) {
@@ -230,15 +238,42 @@ private fun LazyListScope.recentUnlocksSection(
             if (state.isStale && state.cachedAtMillis != null) {
                 item { StaleDataBanner(relativeTime = formatRelativeTime(state.cachedAtMillis)) }
             }
-            if (state.data.isEmpty()) {
+            if (state.data.isNotEmpty()) {
+                item {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = onSearchQueryChanged,
+                        label = { Text("Search unlocks") },
+                        singleLine = true,
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { onSearchQueryChanged("") }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Clear search"
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 4.dp)
+                    )
+                }
+            }
+            if (filteredUnlocks.isEmpty()) {
                 item {
                     EmptySectionCard(
-                        title = "No Unlocks in the Last 7 Days",
-                        subtitle = "You haven't unlocked any achievements in the past 7 days. Time for a gaming session!"
+                        title = if (searchQuery.isBlank()) "No Unlocks in the Last 7 Days" else "No Matches",
+                        subtitle = if (searchQuery.isBlank()) {
+                            "You haven't unlocked any achievements in the past 7 days. Time for a gaming session!"
+                        } else {
+                            "No unlocks match \"$searchQuery\"."
+                        }
                     )
                 }
             } else {
-                items(items = state.data, key = { "${it.achievementId}_${it.date}" }) { unlock ->
+                items(items = filteredUnlocks, key = { "${it.achievementId}_${it.date}" }) { unlock ->
                     RecentUnlockCard(unlock = unlock)
                 }
             }

@@ -69,6 +69,10 @@ class HomeViewModel @JvmOverloads constructor(
         }
     }
 
+    fun onUnlocksSearchQueryChanged(query: String) {
+        _uiState.update { it.copy(unlocksSearchQuery = query) }
+    }
+
     fun retryUserProfile() {
         val credentials = currentCredentials
         if (!credentials.isValid) return
