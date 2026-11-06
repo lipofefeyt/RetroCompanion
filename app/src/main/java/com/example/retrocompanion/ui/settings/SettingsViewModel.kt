@@ -7,9 +7,11 @@ import com.example.retrocompanion.data.local.DataStoreCacheDao
 import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
+import com.example.retrocompanion.data.model.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -17,7 +19,8 @@ data class SettingsUiState(
     val usernameInput: String = "",
     val apiKeyInput: String = "",
     val isSavedSuccess: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM
 )
 
 class SettingsViewModel @JvmOverloads constructor(
@@ -31,17 +34,26 @@ class SettingsViewModel @JvmOverloads constructor(
 
     init {
         loadCredentials()
+        viewModelScope.launch {
+            userPreferencesRepository.themeModeFlow.collectLatest { mode ->
+                _uiState.value = _uiState.value.copy(themeMode = mode)
+            }
+        }
     }
 
     private fun loadCredentials() {
         viewModelScope.launch {
             val credentials = userPreferencesRepository.userCredentialsFlow.first()
-            _uiState.value = SettingsUiState(
+            _uiState.value = _uiState.value.copy(
                 usernameInput = credentials.username,
                 apiKeyInput = credentials.apiKey,
                 isLoading = false
             )
         }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch { userPreferencesRepository.setThemeMode(mode) }
     }
 
     fun onUsernameChanged(newUsername: String) {
@@ -76,7 +88,7 @@ class SettingsViewModel @JvmOverloads constructor(
             if (usernameToClear.isNotBlank()) {
                 responseCache.clearForUser(usernameToClear)
             }
-            _uiState.value = SettingsUiState(
+            _uiState.value = _uiState.value.copy(
                 usernameInput = "",
                 apiKeyInput = "",
                 isLoading = false,

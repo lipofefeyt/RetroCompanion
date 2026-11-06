@@ -4,7 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.retrocompanion.data.model.ThemeMode
 import com.example.retrocompanion.ui.MainScreen
 import com.example.retrocompanion.ui.home.HomeViewModel
 import com.example.retrocompanion.ui.library.GameLibraryViewModel
@@ -17,11 +21,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            RetroCompanionTheme {
-                val homeViewModel: HomeViewModel = viewModel()
-                val settingsViewModel: SettingsViewModel = viewModel()
-                val gameLibraryViewModel: GameLibraryViewModel = viewModel()
-                val profileViewModel: ProfileViewModel = viewModel()
+            val homeViewModel: HomeViewModel = viewModel()
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val gameLibraryViewModel: GameLibraryViewModel = viewModel()
+            val profileViewModel: ProfileViewModel = viewModel()
+
+            val settingsUiState by settingsViewModel.uiState.collectAsState()
+            val darkTheme = when (settingsUiState.themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            RetroCompanionTheme(darkTheme = darkTheme) {
                 MainScreen(
                     homeViewModel = homeViewModel,
                     settingsViewModel = settingsViewModel,

@@ -3,6 +3,7 @@ package com.example.retrocompanion.ui.settings
 import android.app.Application
 import com.example.retrocompanion.data.local.CacheKeys
 import com.example.retrocompanion.data.local.ResponseCache
+import com.example.retrocompanion.data.model.ThemeMode
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.testutil.FakeCacheDao
 import com.example.retrocompanion.testutil.FakeUserCredentialsSource
@@ -117,5 +118,19 @@ class SettingsViewModelTest {
         viewModel.dismissSavedMessage()
 
         assertFalse(viewModel.uiState.value.isSavedSuccess)
+    }
+
+    @Test
+    fun `theme mode loads from the source and setThemeMode writes through it`() = runTest(mainDispatcherRule.dispatcher) {
+        val source = FakeUserCredentialsSource(initialThemeMode = ThemeMode.DARK)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache())
+        advanceUntilIdle()
+
+        assertEquals(ThemeMode.DARK, viewModel.uiState.value.themeMode)
+
+        viewModel.setThemeMode(ThemeMode.LIGHT)
+        advanceUntilIdle()
+
+        assertEquals(ThemeMode.LIGHT, viewModel.uiState.value.themeMode)
     }
 }

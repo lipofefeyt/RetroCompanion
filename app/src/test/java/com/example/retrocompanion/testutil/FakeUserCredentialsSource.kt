@@ -1,13 +1,15 @@
 package com.example.retrocompanion.testutil
 
 import com.example.retrocompanion.data.local.UserCredentialsSource
+import com.example.retrocompanion.data.model.ThemeMode
 import com.example.retrocompanion.data.model.UserCredentials
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeUserCredentialsSource(
     initial: UserCredentials = UserCredentials(),
-    initialFavorites: Set<Int> = emptySet()
+    initialFavorites: Set<Int> = emptySet(),
+    initialThemeMode: ThemeMode = ThemeMode.SYSTEM
 ) : UserCredentialsSource {
 
     private val state = MutableStateFlow(initial)
@@ -15,6 +17,9 @@ class FakeUserCredentialsSource(
 
     private val favoritesState = MutableStateFlow(initialFavorites)
     override val favoriteGameIdsFlow: Flow<Set<Int>> = favoritesState
+
+    private val themeModeState = MutableStateFlow(initialThemeMode)
+    override val themeModeFlow: Flow<ThemeMode> = themeModeState
 
     var lastSavedUsername: String? = null
         private set
@@ -43,5 +48,9 @@ class FakeUserCredentialsSource(
             current.add(gameId)
         }
         favoritesState.value = current
+    }
+
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        themeModeState.value = mode
     }
 }

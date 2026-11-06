@@ -1,5 +1,6 @@
 package com.example.retrocompanion.data.local
 
+import com.example.retrocompanion.data.model.ThemeMode
 import com.example.retrocompanion.data.model.UserCredentials
 import kotlinx.coroutines.flow.Flow
 
@@ -11,7 +12,9 @@ import kotlinx.coroutines.flow.Flow
 interface UserCredentialsSource {
     val userCredentialsFlow: Flow<UserCredentials>
     val favoriteGameIdsFlow: Flow<Set<Int>>
+    val themeModeFlow: Flow<ThemeMode>
     suspend fun saveUserCredentials(username: String, apiKey: String)
     suspend fun clearCredentials()
     suspend fun toggleFavoriteGame(gameId: Int)
+    suspend fun setThemeMode(mode: ThemeMode)
 }

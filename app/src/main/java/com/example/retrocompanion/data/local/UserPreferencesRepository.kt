@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.retrocompanion.data.model.ThemeMode
 import com.example.retrocompanion.data.model.UserCredentials
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -42,6 +43,7 @@ class UserPreferencesRepository(
         val USERNAME = stringPreferencesKey("ra_username_enc")
         val API_KEY = stringPreferencesKey("ra_api_key_enc")
         val PINNED_GAME_IDS = stringSetPreferencesKey("pinned_game_ids")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     override val userCredentialsFlow: Flow<UserCredentials> = context.dataStore.data
@@ -73,6 +75,19 @@ class UserPreferencesRepository(
             preferences.remove(PreferencesKeys.USERNAME)
             preferences.remove(PreferencesKeys.API_KEY)
             preferences.remove(PreferencesKeys.PINNED_GAME_IDS)
+        }
+    }
+
+    override val themeModeFlow: Flow<ThemeMode> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.THEME_MODE]?.let { stored ->
+                runCatching { ThemeMode.valueOf(stored) }.getOrNull()
+            } ?: ThemeMode.SYSTEM
+        }
+
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] = mode.name
         }
     }
 
