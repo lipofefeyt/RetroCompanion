@@ -280,6 +280,21 @@ private fun GameProgressRow(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+
+                if (game.numAwardedHardcore > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "🏆 ${game.numAwardedHardcore} hardcore",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
             }
 
             IconButton(onClick = onToggleFavorite) {
