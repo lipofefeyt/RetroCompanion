@@ -13,6 +13,7 @@ import com.example.retrocompanion.ui.MainScreen
 import com.example.retrocompanion.ui.home.HomeViewModel
 import com.example.retrocompanion.ui.library.GameLibraryViewModel
 import com.example.retrocompanion.ui.profile.ProfileViewModel
+import com.example.retrocompanion.ui.search.SearchViewModel
 import com.example.retrocompanion.ui.settings.SettingsViewModel
 import com.example.retrocompanion.ui.stats.StatsViewModel
 import com.example.retrocompanion.ui.theme.RetroCompanionTheme
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
             val gameLibraryViewModel: GameLibraryViewModel = viewModel()
             val profileViewModel: ProfileViewModel = viewModel()
             val statsViewModel: StatsViewModel = viewModel()
+            val searchViewModel: SearchViewModel = viewModel()
 
             val settingsUiState by settingsViewModel.uiState.collectAsState()
             val darkTheme = when (settingsUiState.themeMode) {
@@ -41,7 +43,8 @@ class MainActivity : ComponentActivity() {
                     settingsViewModel = settingsViewModel,
                     gameLibraryViewModel = gameLibraryViewModel,
                     profileViewModel = profileViewModel,
-                    statsViewModel = statsViewModel
+                    statsViewModel = statsViewModel,
+                    searchViewModel = searchViewModel
                 )
             }
         }

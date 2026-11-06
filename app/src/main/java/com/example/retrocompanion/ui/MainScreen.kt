@@ -35,6 +35,8 @@ import com.example.retrocompanion.ui.library.GameLibraryScreen
 import com.example.retrocompanion.ui.library.GameLibraryViewModel
 import com.example.retrocompanion.ui.profile.ProfileScreen
 import com.example.retrocompanion.ui.profile.ProfileViewModel
+import com.example.retrocompanion.ui.search.SearchScreen
+import com.example.retrocompanion.ui.search.SearchViewModel
 import com.example.retrocompanion.ui.settings.SettingsScreen
 import com.example.retrocompanion.ui.settings.SettingsViewModel
 import com.example.retrocompanion.ui.stats.StatsScreen
@@ -42,6 +44,7 @@ import com.example.retrocompanion.ui.stats.StatsViewModel
 
 sealed class Screen(val route: String, val title: String) {
     data object Home : Screen("home", "Home")
+    data object Search : Screen("search", "Search")
     data object Library : Screen("library", "Library")
     data object Stats : Screen("stats", "Stats")
     data object Profile : Screen("profile", "Profile")
@@ -58,7 +61,8 @@ fun MainScreen(
     settingsViewModel: SettingsViewModel,
     gameLibraryViewModel: GameLibraryViewModel,
     profileViewModel: ProfileViewModel,
-    statsViewModel: StatsViewModel
+    statsViewModel: StatsViewModel,
+    searchViewModel: SearchViewModel
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -90,6 +94,7 @@ fun MainScreen(
 
     val items = listOf(
         Screen.Home,
+        Screen.Search,
         Screen.Library,
         Screen.Stats,
         Screen.Profile,
@@ -117,6 +122,7 @@ fun MainScreen(
                             Text(
                                 text = when (screen) {
                                     Screen.Home -> "🏠"
+                                    Screen.Search -> "🔎"
                                     Screen.Library -> "📚"
                                     Screen.Stats -> "📊"
                                     Screen.Profile -> "👤"
@@ -142,6 +148,23 @@ fun MainScreen(
             composable(Screen.Home.route) {
                 HomeScreen(
                     viewModel = homeViewModel,
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onGameClick = { gameId ->
+                        navController.navigate(Screen.GameDetails.createRoute(gameId))
+                    }
+                )
+            }
+            composable(Screen.Search.route) {
+                SearchScreen(
+                    viewModel = searchViewModel,
                     onNavigateToSettings = {
                         navController.navigate(Screen.Settings.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
