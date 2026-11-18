@@ -8,5 +8,6 @@ data class StatsUiState(
     val credentialsStatus: CredentialsStatus = CredentialsStatus.Resolving,
     val isRefreshing: Boolean = false,
     val profile: SectionState<UserProfileSummary> = SectionState.Loading,
-    val libraryStats: SectionState<LibraryStats> = SectionState.Loading
+    val libraryStats: SectionState<LibraryStats> = SectionState.Loading,
+    val activity: SectionState<UnlockActivity> = SectionState.Loading
 )

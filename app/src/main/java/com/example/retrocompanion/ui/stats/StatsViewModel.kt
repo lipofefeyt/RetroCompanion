@@ -9,6 +9,7 @@ import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
 import com.example.retrocompanion.data.model.GameProgressSummary
+import com.example.retrocompanion.data.model.UnlockStamp
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.data.model.UserProfileSummary
 import com.example.retrocompanion.data.remote.RetroApiException
@@ -24,12 +25,15 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.lang.reflect.Type
+import java.util.TimeZone
 
 class StatsViewModel @JvmOverloads constructor(
     application: Application,
     private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
     private val repository: RetroAchievementsRepository = RetroAchievementsRepository(),
-    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application))
+    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application)),
+    private val nowMillis: () -> Long = { System.currentTimeMillis() },
+    private val timeZone: TimeZone = TimeZone.getDefault()
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(StatsUiState())
@@ -72,8 +76,10 @@ class StatsViewModel @JvmOverloads constructor(
     private suspend fun loadAllSections(credentials: UserCredentials) = coroutineScope {
         val profileJob = launch { loadProfile(credentials) }
         val libraryJob = launch { loadLibraryStats(credentials) }
+        val activityJob = launch { loadActivity(credentials) }
         profileJob.join()
         libraryJob.join()
+        activityJob.join()
     }
 
     private suspend fun loadProfile(credentials: UserCredentials) {
@@ -140,7 +146,77 @@ class StatsViewModel @JvmOverloads constructor(
         _uiState.update { it.copy(libraryStats = newState) }
     }
 
+    /**
+     * Loads unlock dates for the heatmap window in 30-day chunks. Chunks that ended long ago are
+     * read from the cache and never refetched; the recent ones are refetched, falling back to
+     * their cached copy offline. If any chunk is unavailable the section errors rather than
+     * showing a heatmap with a silent gap (which would also corrupt the streaks).
+     */
+    private suspend fun loadActivity(credentials: UserCredentials) {
+        val now = nowMillis()
+        val chunks = UnlockChunks.forWindow(now, UnlockActivity.DEFAULT_WINDOW_DAYS)
+        val cachedByIndex = chunks.associate { chunk ->
+            chunk.index to responseCache.read<List<UnlockStamp>>(
+                CacheKeys.unlockChunk(credentials.username, chunk.index),
+                stampListType
+            )
+        }
+
+        if (cachedByIndex.values.all { it != null }) {
+            val stamps = cachedByIndex.values.flatMap { it!!.data }
+            _uiState.update {
+                it.copy(
+                    activity = SectionState.Success(
+                        UnlockActivity.from(stamps, now, timeZone),
+                        isStale = true,
+                        cachedAtMillis = cachedByIndex.values.minOf { cached -> cached!!.timestampMillis }
+                    )
+                )
+            }
+        } else {
+            _uiState.update { it.copy(activity = SectionState.Loading) }
+        }
+
+        val stamps = ArrayList<UnlockStamp>()
+        var staleSince: Long? = null
+        var failure: Throwable? = null
+        for (chunk in chunks) {
+            val cached = cachedByIndex[chunk.index]
+            if (cached != null && chunk.isSettled(now)) {
+                stamps += cached.data
+                continue
+            }
+            val result = repository.getUnlocksBetween(credentials, chunk.fromEpochSeconds, chunk.toEpochSeconds)
+            if (result.isSuccess) {
+                val fetched = result.getOrThrow()
+                responseCache.write(CacheKeys.unlockChunk(credentials.username, chunk.index), fetched)
+                stamps += fetched
+            } else if (cached != null) {
+                stamps += cached.data
+                staleSince = minOf(staleSince ?: Long.MAX_VALUE, cached.timestampMillis)
+            } else {
+                failure = result.exceptionOrNull()
+                break
+            }
+        }
+
+        val newState = if (failure != null) {
+            SectionState.Error(
+                message = failure.localizedMessage ?: "Failed to load your unlock activity.",
+                isInvalidApiKey = failure is RetroApiException.InvalidApiKey
+            )
+        } else {
+            SectionState.Success(
+                UnlockActivity.from(stamps, now, timeZone),
+                isStale = staleSince != null,
+                cachedAtMillis = staleSince
+            )
+        }
+        _uiState.update { it.copy(activity = newState) }
+    }
+
     private companion object {
         val libraryListType: Type = object : TypeToken<List<GameProgressSummary>>() {}.type
+        val stampListType: Type = object : TypeToken<List<UnlockStamp>>() {}.type
     }
 }

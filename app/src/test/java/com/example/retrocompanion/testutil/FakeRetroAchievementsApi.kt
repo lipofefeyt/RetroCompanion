@@ -27,7 +27,8 @@ class FakeRetroAchievementsApi(
     var recentAchievementsResult: suspend () -> List<RecentUnlock> = { emptyList() },
     var gameInfoResult: suspend () -> GameInfo = { GameInfo() },
     var completionProgressResult: suspend (count: Int, offset: Int) -> UserCompletionProgressPage =
-        { _, _ -> UserCompletionProgressPage() }
+        { _, _ -> UserCompletionProgressPage() },
+    var earnedBetweenResult: suspend (from: Long, to: Long) -> List<RecentUnlock> = { _, _ -> emptyList() }
 ) : RetroAchievementsApi {
 
     override suspend fun getUserSummary(
@@ -58,6 +59,14 @@ class FakeRetroAchievementsApi(
         targetUser: String,
         gameId: Int
     ): GameInfo = gameInfoResult()
+
+    override suspend fun getAchievementsEarnedBetween(
+        authUser: String,
+        apiKey: String,
+        targetUser: String,
+        from: Long,
+        to: Long
+    ): List<RecentUnlock> = earnedBetweenResult(from, to)
 
     override suspend fun getUserCompletionProgress(
         authUser: String,

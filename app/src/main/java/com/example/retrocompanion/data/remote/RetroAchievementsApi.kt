@@ -66,6 +66,22 @@ interface RetroAchievementsApi {
     ): List<RecentUnlock>
 
     /**
+     * Fetches the user's achievement unlocks between two moments.
+     * Docs: https://api-docs.retroachievements.org/v1/get-achievements-earned-between.html
+     *
+     * @param from Start of the range as an epoch timestamp in seconds (f).
+     * @param to End of the range as an epoch timestamp in seconds (t).
+     */
+    @GET("API_GetAchievementsEarnedBetween.php")
+    suspend fun getAchievementsEarnedBetween(
+        @Query("z") authUser: String,
+        @Query("y") apiKey: String,
+        @Query("u") targetUser: String,
+        @Query("f") from: Long,
+        @Query("t") to: Long
+    ): List<RecentUnlock>
+
+    /**
      * Fetches a game's details and the user's progress on it.
      * Docs: https://api-docs.retroachievements.org/v1/get-game-info-and-user-progress.html
      *

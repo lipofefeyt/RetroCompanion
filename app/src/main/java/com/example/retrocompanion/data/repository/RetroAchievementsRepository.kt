@@ -4,6 +4,7 @@ import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.RecentUnlock
+import com.example.retrocompanion.data.model.UnlockStamp
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.data.model.UserProfileSummary
 import com.example.retrocompanion.data.remote.RetroAchievementsApi
@@ -66,6 +67,27 @@ class RetroAchievementsRepository(
         // "Date" is "yyyy-MM-dd HH:mm:ss", so a plain string sort is also a correct
         // chronological sort. Unlocks with no date (shouldn't happen) sort last.
         unlocks.sortedByDescending { it.date.orEmpty() }
+    }
+
+    /**
+     * Fetches the id and date of every achievement the user unlocked between two epoch-second
+     * timestamps. Entries without a date are dropped since they can't be placed on a day.
+     */
+    suspend fun getUnlocksBetween(
+        credentials: UserCredentials,
+        fromEpochSeconds: Long,
+        toEpochSeconds: Long
+    ): Result<List<UnlockStamp>> = safeApiCall {
+        require(credentials.isValid) { "User credentials are invalid or missing." }
+        api.getAchievementsEarnedBetween(
+            authUser = credentials.username,
+            apiKey = credentials.apiKey,
+            targetUser = credentials.username,
+            from = fromEpochSeconds,
+            to = toEpochSeconds
+        ).mapNotNull { unlock ->
+            unlock.date?.takeIf { it.isNotBlank() }?.let { UnlockStamp(unlock.achievementId, it) }
+        }
     }
 
     /** Fetches a game's details and the current user's progress on it. */

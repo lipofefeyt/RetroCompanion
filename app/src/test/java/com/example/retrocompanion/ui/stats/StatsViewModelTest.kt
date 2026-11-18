@@ -4,6 +4,8 @@ import android.app.Application
 import com.example.retrocompanion.data.local.CacheKeys
 import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.model.GameProgressSummary
+import com.example.retrocompanion.data.model.RecentUnlock
+import com.example.retrocompanion.data.model.UnlockStamp
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.data.model.UserProfileSummary
@@ -92,4 +94,99 @@ class StatsViewModelTest {
         assertTrue((state as SectionState.Success).isStale)
         assertEquals(100, state.data.overallCompletionPercent)
     }
+
+    // --- Unlock activity (streaks + heatmap) ---
+
+    private val activityNow = UnlockActivity.parseUnlockMillis("2026-03-11 12:00:00")!!
+    private val activityChunks = UnlockChunks.forWindow(activityNow, UnlockActivity.DEFAULT_WINDOW_DAYS)
+    private val utc = java.util.TimeZone.getTimeZone("UTC")
+
+    private fun activityViewModel(api: FakeRetroAchievementsApi, cache: ResponseCache) = StatsViewModel(
+        Application(),
+        FakeUserCredentialsSource(sampleCredentials),
+        RetroAchievementsRepository(api),
+        cache,
+        nowMillis = { activityNow },
+        timeZone = utc
+    )
+
+    @Test
+    fun `activity fetches every chunk on first load and builds streaks from the unlocks`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val ranges = mutableListOf<Pair<Long, Long>>()
+            val api = FakeRetroAchievementsApi(earnedBetweenResult = { from, to ->
+                ranges += from to to
+                if (to >= activityNow / 1000) {
+                    listOf(
+                        RecentUnlock(date = "2026-03-10 08:00:00", achievementId = 1),
+                        RecentUnlock(date = "2026-03-11 08:00:00", achievementId = 2)
+                    )
+                } else {
+                    emptyList()
+                }
+            })
+            val viewModel = activityViewModel(api, emptyCache())
+
+            advanceUntilIdle()
+
+            assertEquals(activityChunks.map { it.fromEpochSeconds to it.toEpochSeconds }, ranges)
+            val state = viewModel.uiState.value.activity as SectionState.Success
+            assertEquals(2, state.data.currentStreak)
+            assertEquals(2, state.data.totalUnlocks)
+            assertEquals(false, state.isStale)
+        }
+
+    @Test
+    fun `activity does not refetch chunks that are cached and settled`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val cache = emptyCache()
+            activityChunks.forEach { chunk ->
+                cache.write(
+                    CacheKeys.unlockChunk(sampleCredentials.username, chunk.index),
+                    listOf(UnlockStamp(achievementId = chunk.index.toInt(), date = "2026-03-10 08:00:00"))
+                )
+            }
+            var fetches = 0
+            val api = FakeRetroAchievementsApi(earnedBetweenResult = { _, _ -> fetches++; emptyList() })
+            activityViewModel(api, cache)
+
+            advanceUntilIdle()
+
+            val unsettled = activityChunks.count { !it.isSettled(activityNow) }
+            assertTrue(unsettled in 1 until activityChunks.size)
+            assertEquals(unsettled, fetches)
+        }
+
+    @Test
+    fun `activity falls back to cached chunks as stale data when offline`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val cache = emptyCache()
+            activityChunks.forEach { chunk ->
+                cache.write(
+                    CacheKeys.unlockChunk(sampleCredentials.username, chunk.index),
+                    listOf(UnlockStamp(achievementId = chunk.index.toInt(), date = "2026-03-10 08:00:00")),
+                    nowMillis = 1_000L
+                )
+            }
+            val api = FakeRetroAchievementsApi(earnedBetweenResult = { _, _ -> throw java.io.IOException("offline") })
+            val viewModel = activityViewModel(api, cache)
+
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value.activity as SectionState.Success
+            assertTrue(state.isStale)
+            assertEquals(1_000L, state.cachedAtMillis)
+            assertTrue(state.data.totalUnlocks > 0)
+        }
+
+    @Test
+    fun `activity is an error rather than a partial heatmap when a chunk is unavailable`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val api = FakeRetroAchievementsApi(earnedBetweenResult = { _, _ -> throw httpException(500) })
+            val viewModel = activityViewModel(api, emptyCache())
+
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.activity is SectionState.Error)
+        }
 }

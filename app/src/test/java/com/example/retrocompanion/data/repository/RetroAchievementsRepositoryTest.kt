@@ -2,6 +2,7 @@ package com.example.retrocompanion.data.repository
 
 import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.RecentUnlock
+import com.example.retrocompanion.data.model.UnlockStamp
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
@@ -26,6 +27,26 @@ class RetroAchievementsRepositoryTest {
         val result = repository.getRecentUnlocks(sampleCredentials).getOrThrow()
 
         assertEquals(listOf("Newest", "Middle", "Oldest"), result.map { it.title })
+    }
+
+    @Test
+    fun `getUnlocksBetween passes the range through and keeps only id and date`() = runTest {
+        var requested: Pair<Long, Long>? = null
+        val api = FakeRetroAchievementsApi(earnedBetweenResult = { from, to ->
+            requested = from to to
+            listOf(
+                RecentUnlock(date = "2026-03-10 08:00:00", achievementId = 1, title = "Sample One"),
+                RecentUnlock(date = null, achievementId = 2, title = "No Date"),
+                RecentUnlock(date = " ", achievementId = 3, title = "Blank Date")
+            )
+        })
+
+        val result = RetroAchievementsRepository(api)
+            .getUnlocksBetween(sampleCredentials, fromEpochSeconds = 100L, toEpochSeconds = 200L)
+            .getOrThrow()
+
+        assertEquals(100L to 200L, requested)
+        assertEquals(listOf(UnlockStamp(1, "2026-03-10 08:00:00")), result)
     }
 
     @Test
