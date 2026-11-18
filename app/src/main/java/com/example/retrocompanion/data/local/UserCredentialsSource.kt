@@ -13,8 +13,10 @@ interface UserCredentialsSource {
     val userCredentialsFlow: Flow<UserCredentials>
     val favoriteGameIdsFlow: Flow<Set<Int>>
     val themeModeFlow: Flow<ThemeMode>
+    val unlockNotificationsEnabledFlow: Flow<Boolean>
     suspend fun saveUserCredentials(username: String, apiKey: String)
     suspend fun clearCredentials()
     suspend fun toggleFavoriteGame(gameId: Int)
     suspend fun setThemeMode(mode: ThemeMode)
+    suspend fun setUnlockNotificationsEnabled(enabled: Boolean)
 }

@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class FakeUserCredentialsSource(
     initial: UserCredentials = UserCredentials(),
     initialFavorites: Set<Int> = emptySet(),
-    initialThemeMode: ThemeMode = ThemeMode.SYSTEM
+    initialThemeMode: ThemeMode = ThemeMode.SYSTEM,
+    initialUnlockNotifications: Boolean = false
 ) : UserCredentialsSource {
 
     private val state = MutableStateFlow(initial)
@@ -20,6 +21,9 @@ class FakeUserCredentialsSource(
 
     private val themeModeState = MutableStateFlow(initialThemeMode)
     override val themeModeFlow: Flow<ThemeMode> = themeModeState
+
+    private val unlockNotificationsState = MutableStateFlow(initialUnlockNotifications)
+    override val unlockNotificationsEnabledFlow: Flow<Boolean> = unlockNotificationsState
 
     var lastSavedUsername: String? = null
         private set
@@ -38,6 +42,7 @@ class FakeUserCredentialsSource(
         clearCount++
         state.value = UserCredentials()
         favoritesState.value = emptySet()
+        unlockNotificationsState.value = false
     }
 
     override suspend fun toggleFavoriteGame(gameId: Int) {
@@ -48,6 +53,10 @@ class FakeUserCredentialsSource(
             current.add(gameId)
         }
         favoritesState.value = current
+    }
+
+    override suspend fun setUnlockNotificationsEnabled(enabled: Boolean) {
+        unlockNotificationsState.value = enabled
     }
 
     override suspend fun setThemeMode(mode: ThemeMode) {

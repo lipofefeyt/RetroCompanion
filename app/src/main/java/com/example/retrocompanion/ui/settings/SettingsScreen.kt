@@ -177,6 +177,13 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                UnlockNotificationsSection(
+                    enabled = uiState.unlockNotificationsEnabled,
+                    onEnabledChange = { viewModel.setUnlockNotificationsEnabled(it) }
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
                 // Local Storage Security Notice & Instructions Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),

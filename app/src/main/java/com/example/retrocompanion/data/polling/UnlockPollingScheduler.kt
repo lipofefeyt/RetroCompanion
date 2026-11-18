@@ -10,6 +10,18 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
+/** Something that can start and stop background unlock polling; faked in tests. */
+interface PollingScheduler {
+    fun enable()
+    fun disable()
+}
+
+/** The real [PollingScheduler]. Touches WorkManager only when actually used. */
+class WorkManagerPollingScheduler(private val context: Context) : PollingScheduler {
+    override fun enable() = UnlockPollingScheduler.enable(context)
+    override fun disable() = UnlockPollingScheduler.disable(context)
+}
+
 /** Turns background unlock polling on and off. Safe to call repeatedly. */
 object UnlockPollingScheduler {
     const val UNIQUE_WORK_NAME = "unlock_polling"

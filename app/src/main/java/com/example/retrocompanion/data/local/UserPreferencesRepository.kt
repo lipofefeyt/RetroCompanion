@@ -3,6 +3,7 @@ package com.example.retrocompanion.data.local
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -44,6 +45,7 @@ class UserPreferencesRepository(
         val API_KEY = stringPreferencesKey("ra_api_key_enc")
         val PINNED_GAME_IDS = stringSetPreferencesKey("pinned_game_ids")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val UNLOCK_NOTIFICATIONS = booleanPreferencesKey("unlock_notifications_enabled")
     }
 
     override val userCredentialsFlow: Flow<UserCredentials> = context.dataStore.data
@@ -75,6 +77,7 @@ class UserPreferencesRepository(
             preferences.remove(PreferencesKeys.USERNAME)
             preferences.remove(PreferencesKeys.API_KEY)
             preferences.remove(PreferencesKeys.PINNED_GAME_IDS)
+            preferences.remove(PreferencesKeys.UNLOCK_NOTIFICATIONS)
         }
     }
 
@@ -88,6 +91,15 @@ class UserPreferencesRepository(
     override suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME_MODE] = mode.name
+        }
+    }
+
+    override val unlockNotificationsEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.UNLOCK_NOTIFICATIONS] ?: false }
+
+    override suspend fun setUnlockNotificationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.UNLOCK_NOTIFICATIONS] = enabled
         }
     }
 

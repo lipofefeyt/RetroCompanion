@@ -62,7 +62,9 @@ fun MainScreen(
     gameLibraryViewModel: GameLibraryViewModel,
     profileViewModel: ProfileViewModel,
     statsViewModel: StatsViewModel,
-    searchViewModel: SearchViewModel
+    searchViewModel: SearchViewModel,
+    pendingGameId: Int? = null,
+    onPendingGameHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -89,6 +91,14 @@ fun MainScreen(
                 }
                 CredentialsStatus.Present -> hasHandledFirstLaunch = true
             }
+        }
+    }
+
+    // Opened from a notification: jump straight to that game's details.
+    LaunchedEffect(pendingGameId) {
+        if (pendingGameId != null) {
+            navController.navigate(Screen.GameDetails.createRoute(pendingGameId))
+            onPendingGameHandled()
         }
     }
 

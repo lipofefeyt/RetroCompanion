@@ -20,7 +20,7 @@ class UnlockPollWorker(
             credentialsSource = UserPreferencesRepository(applicationContext),
             repository = RetroAchievementsRepository(),
             stateStore = DataStorePollingStateStore(applicationContext),
-            notifier = UnlockNotifierProvider.notifier
+            notifier = AndroidUnlockNotifier(applicationContext)
         )
         return when (poller.poll()) {
             is PollOutcome.Completed, PollOutcome.NoCredentials -> Result.success()
@@ -35,10 +35,4 @@ class UnlockPollWorker(
     private companion object {
         const val MAX_ATTEMPTS = 3
     }
-}
-
-/** Where the worker finds its notifier; the notification layer sets this up on app start. */
-object UnlockNotifierProvider {
-    @Volatile
-    var notifier: UnlockNotifier = NoOpUnlockNotifier
 }
