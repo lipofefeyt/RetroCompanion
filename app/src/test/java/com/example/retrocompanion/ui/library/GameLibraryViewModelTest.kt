@@ -10,6 +10,7 @@ import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import com.example.retrocompanion.testutil.FakeCacheDao
 import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
 import com.example.retrocompanion.testutil.FakeUserCredentialsSource
+import com.example.retrocompanion.testutil.FakeWishlistSource
 import com.example.retrocompanion.testutil.MainDispatcherRule
 import com.example.retrocompanion.testutil.httpException
 import com.example.retrocompanion.ui.common.CredentialsStatus
@@ -39,7 +40,8 @@ class GameLibraryViewModelTest {
             Application(),
             FakeUserCredentialsSource(UserCredentials()),
             RetroAchievementsRepository(FakeRetroAchievementsApi()),
-            emptyCache()
+            emptyCache(),
+            FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -60,7 +62,8 @@ class GameLibraryViewModelTest {
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
             RetroAchievementsRepository(api),
-            emptyCache()
+            emptyCache(),
+            FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -85,7 +88,8 @@ class GameLibraryViewModelTest {
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
             RetroAchievementsRepository(api),
-            emptyCache()
+            emptyCache(),
+            FakeWishlistSource()
         )
         advanceUntilIdle()
 
@@ -104,7 +108,8 @@ class GameLibraryViewModelTest {
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
             RetroAchievementsRepository(api),
-            cache
+            cache,
+            FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -126,7 +131,8 @@ class GameLibraryViewModelTest {
             Application(),
             FakeUserCredentialsSource(sampleCredentials),
             RetroAchievementsRepository(api),
-            ResponseCache(cacheDao)
+            ResponseCache(cacheDao),
+            FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -148,7 +154,8 @@ class GameLibraryViewModelTest {
             Application(),
             credentialsSource,
             RetroAchievementsRepository(api),
-            emptyCache()
+            emptyCache(),
+            FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -161,4 +168,31 @@ class GameLibraryViewModelTest {
 
         assertEquals(setOf(1, 2), viewModel.uiState.value.favoriteGameIds)
     }
+
+    @Test
+    fun `toggleWishlist adds then removes the game and updates wishlistGameIds`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val game = GameProgressSummary(gameId = 7, title = "Sample Game", consoleName = "Sample Console")
+            val api = FakeRetroAchievementsApi(
+                completionProgressResult = { _, _ -> UserCompletionProgressPage(count = 1, total = 1, results = listOf(game)) }
+            )
+            val wishlist = FakeWishlistSource()
+            val viewModel = GameLibraryViewModel(
+                Application(),
+                FakeUserCredentialsSource(sampleCredentials),
+                RetroAchievementsRepository(api),
+                emptyCache(),
+                wishlist
+            )
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.wishlistGameIds.isEmpty())
+
+            viewModel.toggleWishlist(game)
+            advanceUntilIdle()
+            assertEquals(setOf(7), viewModel.uiState.value.wishlistGameIds)
+
+            viewModel.toggleWishlist(game)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.wishlistGameIds.isEmpty())
+        }
 }

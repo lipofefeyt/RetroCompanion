@@ -9,9 +9,11 @@ import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import com.example.retrocompanion.testutil.FakeCacheDao
 import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
 import com.example.retrocompanion.testutil.FakeUserCredentialsSource
+import com.example.retrocompanion.testutil.FakeWishlistSource
 import com.example.retrocompanion.testutil.MainDispatcherRule
 import com.example.retrocompanion.testutil.httpException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -39,7 +41,8 @@ class GameDetailsViewModelTest {
                 gameId = 42,
                 userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
                 repository = RetroAchievementsRepository(api),
-                responseCache = emptyCache()
+                responseCache = emptyCache(),
+                wishlistSource = FakeWishlistSource()
             )
 
             advanceUntilIdle()
@@ -59,7 +62,8 @@ class GameDetailsViewModelTest {
                 gameId = 42,
                 userPreferencesRepository = FakeUserCredentialsSource(UserCredentials()),
                 repository = RetroAchievementsRepository(api),
-                responseCache = emptyCache()
+                responseCache = emptyCache(),
+                wishlistSource = FakeWishlistSource()
             )
 
             advanceUntilIdle()
@@ -78,7 +82,8 @@ class GameDetailsViewModelTest {
             gameId = 42,
             userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
             repository = RetroAchievementsRepository(api),
-            responseCache = emptyCache()
+            responseCache = emptyCache(),
+            wishlistSource = FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -100,7 +105,8 @@ class GameDetailsViewModelTest {
             gameId = 42,
             userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
             repository = RetroAchievementsRepository(api),
-            responseCache = emptyCache()
+            responseCache = emptyCache(),
+            wishlistSource = FakeWishlistSource()
         )
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value is GameDetailsUiState.Error)
@@ -125,7 +131,8 @@ class GameDetailsViewModelTest {
             gameId = 42,
             userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
             repository = RetroAchievementsRepository(api),
-            responseCache = cache
+            responseCache = cache,
+            wishlistSource = FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -146,7 +153,8 @@ class GameDetailsViewModelTest {
             gameId = 42,
             userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
             repository = RetroAchievementsRepository(api),
-            responseCache = ResponseCache(cacheDao)
+            responseCache = ResponseCache(cacheDao),
+            wishlistSource = FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -170,7 +178,8 @@ class GameDetailsViewModelTest {
             gameId = 42,
             userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
             repository = RetroAchievementsRepository(api),
-            responseCache = emptyCache()
+            responseCache = emptyCache(),
+            wishlistSource = FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -207,7 +216,8 @@ class GameDetailsViewModelTest {
             gameId = 42,
             userPreferencesRepository = credentialsSource,
             repository = RetroAchievementsRepository(api),
-            responseCache = emptyCache()
+            responseCache = emptyCache(),
+            wishlistSource = FakeWishlistSource()
         )
 
         advanceUntilIdle()
@@ -237,7 +247,8 @@ class GameDetailsViewModelTest {
             gameId = 42,
             userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
             repository = RetroAchievementsRepository(api),
-            responseCache = emptyCache()
+            responseCache = emptyCache(),
+            wishlistSource = FakeWishlistSource()
         )
         advanceUntilIdle()
 
@@ -248,4 +259,34 @@ class GameDetailsViewModelTest {
         state = viewModel.uiState.value as GameDetailsUiState.Success
         assertEquals(listOf("Rare", "Common"), state.filteredAchievements.map { it.title })
     }
+
+    @Test
+    fun `toggleWishlist stores the game and reflects isWishlisted in state`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val gameInfo = GameInfo(gameId = 42, title = "Sample Game", consoleName = "Sample Console", imageIcon = "/Images/000001.png")
+            val api = FakeRetroAchievementsApi(gameInfoResult = { gameInfo })
+            val wishlist = FakeWishlistSource()
+            val viewModel = GameDetailsViewModel(
+                Application(),
+                gameId = 42,
+                userPreferencesRepository = FakeUserCredentialsSource(sampleCredentials),
+                repository = RetroAchievementsRepository(api),
+                responseCache = emptyCache(),
+                wishlistSource = wishlist
+            )
+            advanceUntilIdle()
+            assertEquals(false, (viewModel.uiState.value as GameDetailsUiState.Success).isWishlisted)
+
+            viewModel.toggleWishlist()
+            advanceUntilIdle()
+            assertEquals(true, (viewModel.uiState.value as GameDetailsUiState.Success).isWishlisted)
+            val stored = wishlist.wishlistFlow.first().single()
+            assertEquals(42, stored.gameId)
+            assertEquals("Sample Game", stored.title)
+            assertEquals("Sample Console", stored.consoleName)
+
+            viewModel.toggleWishlist()
+            advanceUntilIdle()
+            assertEquals(false, (viewModel.uiState.value as GameDetailsUiState.Success).isWishlisted)
+        }
 }

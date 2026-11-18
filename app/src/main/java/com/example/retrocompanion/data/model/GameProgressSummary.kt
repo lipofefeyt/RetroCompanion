@@ -26,14 +26,7 @@ data class GameProgressSummary(
     val numAwardedHardcore: Int = 0
 ) {
     val iconUrl: String
-        get() {
-            val icon = imageIcon ?: return ""
-            return when {
-                icon.startsWith("http://") || icon.startsWith("https://") -> icon
-                icon.startsWith("/") -> "https://media.retroachievements.org$icon"
-                else -> "https://media.retroachievements.org/Images/$icon"
-            }
-        }
+        get() = resolveMediaUrl(imageIcon)
 
     val progressFraction: Float
         get() {

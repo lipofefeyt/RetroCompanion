@@ -21,6 +21,7 @@ sealed interface GameDetailsUiState {
         val searchQuery: String = "",
         val selectedFilter: AchievementFilter = AchievementFilter.ALL,
         val isFavorite: Boolean = false,
+        val isWishlisted: Boolean = false,
         val sortByRarity: Boolean = false
     ) : GameDetailsUiState {
         val filteredAchievements: List<GameAchievement>

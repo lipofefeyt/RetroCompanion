@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.retrocompanion.data.local.CacheKeys
 import com.example.retrocompanion.data.local.DataStoreCacheDao
 import com.example.retrocompanion.data.local.ResponseCache
+import com.example.retrocompanion.data.local.DataStoreWishlistRepository
 import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
+import com.example.retrocompanion.data.local.WishlistSource
 import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.UserCredentials
+import com.example.retrocompanion.data.model.WishlistEntry
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import com.example.retrocompanion.ui.common.CredentialsStatus
@@ -27,7 +30,8 @@ class GameLibraryViewModel @JvmOverloads constructor(
     application: Application,
     private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
     private val repository: RetroAchievementsRepository = RetroAchievementsRepository(),
-    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application))
+    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application)),
+    private val wishlistSource: WishlistSource = DataStoreWishlistRepository(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GameLibraryUiState())
@@ -51,6 +55,24 @@ class GameLibraryViewModel @JvmOverloads constructor(
             userPreferencesRepository.favoriteGameIdsFlow.collectLatest { ids ->
                 _uiState.update { it.copy(favoriteGameIds = ids) }
             }
+        }
+        viewModelScope.launch {
+            wishlistSource.wishlistFlow.collectLatest { entries ->
+                _uiState.update { it.copy(wishlistGameIds = entries.map { e -> e.gameId }.toSet()) }
+            }
+        }
+    }
+
+    fun toggleWishlist(game: GameProgressSummary) {
+        viewModelScope.launch {
+            wishlistSource.toggle(
+                WishlistEntry(
+                    gameId = game.gameId,
+                    title = game.title,
+                    consoleName = game.consoleName,
+                    imageIcon = game.imageIcon
+                )
+            )
         }
     }
 

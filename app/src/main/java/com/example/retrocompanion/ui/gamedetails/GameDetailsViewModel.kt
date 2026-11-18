@@ -8,9 +8,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.retrocompanion.data.local.CacheKeys
 import com.example.retrocompanion.data.local.DataStoreCacheDao
 import com.example.retrocompanion.data.local.ResponseCache
+import com.example.retrocompanion.data.local.DataStoreWishlistRepository
 import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
+import com.example.retrocompanion.data.local.WishlistSource
 import com.example.retrocompanion.data.model.GameInfo
+import com.example.retrocompanion.data.model.WishlistEntry
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,13 +28,15 @@ class GameDetailsViewModel(
     private val gameId: Int,
     private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
     private val repository: RetroAchievementsRepository = RetroAchievementsRepository(),
-    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application))
+    private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application)),
+    private val wishlistSource: WishlistSource = DataStoreWishlistRepository(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GameDetailsUiState>(GameDetailsUiState.Loading)
     val uiState: StateFlow<GameDetailsUiState> = _uiState.asStateFlow()
 
     private var isCurrentlyFavorite: Boolean = false
+    private var isCurrentlyWishlisted: Boolean = false
 
     init {
         viewModelScope.launch {
@@ -43,7 +48,31 @@ class GameDetailsViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            wishlistSource.wishlistFlow.collectLatest { entries ->
+                isCurrentlyWishlisted = entries.any { it.gameId == gameId }
+                val currentState = _uiState.value
+                if (currentState is GameDetailsUiState.Success) {
+                    _uiState.value = currentState.copy(isWishlisted = isCurrentlyWishlisted)
+                }
+            }
+        }
         load()
+    }
+
+    fun toggleWishlist() {
+        val success = _uiState.value as? GameDetailsUiState.Success ?: return
+        val info = success.gameInfo
+        viewModelScope.launch {
+            wishlistSource.toggle(
+                WishlistEntry(
+                    gameId = gameId,
+                    title = info.title,
+                    consoleName = info.consoleName,
+                    imageIcon = info.imageIcon
+                )
+            )
+        }
     }
 
     fun toggleFavorite() {
@@ -91,7 +120,8 @@ class GameDetailsViewModel(
                     cached.data,
                     isStale = true,
                     cachedAtMillis = cached.timestampMillis,
-                    isFavorite = isCurrentlyFavorite
+                    isFavorite = isCurrentlyFavorite,
+                    isWishlisted = isCurrentlyWishlisted
                 )
             } else {
                 GameDetailsUiState.Loading
@@ -101,7 +131,12 @@ class GameDetailsViewModel(
             _uiState.value = if (result.isSuccess) {
                 val gameInfo = result.getOrThrow()
                 responseCache.write(cacheKey, gameInfo)
-                GameDetailsUiState.Success(gameInfo, isStale = false, isFavorite = isCurrentlyFavorite)
+                GameDetailsUiState.Success(
+                    gameInfo,
+                    isStale = false,
+                    isFavorite = isCurrentlyFavorite,
+                    isWishlisted = isCurrentlyWishlisted
+                )
             } else {
                 val error = result.exceptionOrNull()!!
                 if (cached != null) {
@@ -109,7 +144,8 @@ class GameDetailsViewModel(
                         cached.data,
                         isStale = true,
                         cachedAtMillis = cached.timestampMillis,
-                        isFavorite = isCurrentlyFavorite
+                        isFavorite = isCurrentlyFavorite,
+                        isWishlisted = isCurrentlyWishlisted
                     )
                 } else {
                     GameDetailsUiState.Error(

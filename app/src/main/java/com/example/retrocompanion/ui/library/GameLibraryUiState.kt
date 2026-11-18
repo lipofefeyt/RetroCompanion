@@ -9,6 +9,7 @@ data class GameLibraryUiState(
     val isRefreshing: Boolean = false,
     val searchQuery: String = "",
     val favoriteGameIds: Set<Int> = emptySet(),
+    val wishlistGameIds: Set<Int> = emptySet(),
     val games: SectionState<List<GameProgressSummary>> = SectionState.Loading
 ) {
     /** Pinned favorite games loaded in the user's library. */

@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.retrocompanion.data.model.GameAchievement
+import com.example.retrocompanion.ui.components.WishlistIcons
 import com.example.retrocompanion.ui.components.EmptySectionCard
 import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.NetworkImage
@@ -77,6 +78,12 @@ fun GameDetailsScreen(
                 actions = {
                     val successState = uiState as? GameDetailsUiState.Success
                     if (successState != null) {
+                        IconButton(onClick = { viewModel.toggleWishlist() }) {
+                            Icon(
+                                imageVector = if (successState.isWishlisted) WishlistIcons.Bookmark else WishlistIcons.BookmarkBorder,
+                                contentDescription = if (successState.isWishlisted) "Remove from wishlist" else "Add to wishlist"
+                            )
+                        }
                         IconButton(onClick = { viewModel.toggleFavorite() }) {
                             Icon(
                                 imageVector = if (successState.isFavorite) Icons.Filled.Star else Icons.Outlined.OutlinedStar,

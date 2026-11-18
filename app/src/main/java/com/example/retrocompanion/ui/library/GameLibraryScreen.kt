@@ -49,6 +49,7 @@ import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.MissingCredentialsScreen
 import com.example.retrocompanion.ui.components.NetworkImage
 import com.example.retrocompanion.ui.components.RefreshCompletionHaptic
+import com.example.retrocompanion.ui.components.WishlistIcons
 import com.example.retrocompanion.ui.components.SectionErrorCard
 import com.example.retrocompanion.ui.components.StaleDataBanner
 import com.example.retrocompanion.ui.components.formatRelativeTime
@@ -148,8 +149,10 @@ fun GameLibraryScreen(
                                                 GameProgressRow(
                                                     game = game,
                                                     isFavorite = true,
+                                                    isWishlisted = uiState.wishlistGameIds.contains(game.gameId),
                                                     onClick = { onGameClick(game.gameId) },
-                                                    onToggleFavorite = { viewModel.toggleFavorite(game.gameId) }
+                                                    onToggleFavorite = { viewModel.toggleFavorite(game.gameId) },
+                                                    onToggleWishlist = { viewModel.toggleWishlist(game) }
                                                 )
                                             }
                                             item {
@@ -179,8 +182,10 @@ fun GameLibraryScreen(
                                                 GameProgressRow(
                                                     game = game,
                                                     isFavorite = uiState.favoriteGameIds.contains(game.gameId),
+                                                    isWishlisted = uiState.wishlistGameIds.contains(game.gameId),
                                                     onClick = { onGameClick(game.gameId) },
-                                                    onToggleFavorite = { viewModel.toggleFavorite(game.gameId) }
+                                                    onToggleFavorite = { viewModel.toggleFavorite(game.gameId) },
+                                                    onToggleWishlist = { viewModel.toggleWishlist(game) }
                                                 )
                                             }
                                         }
@@ -199,8 +204,10 @@ fun GameLibraryScreen(
 private fun GameProgressRow(
     game: GameProgressSummary,
     isFavorite: Boolean,
+    isWishlisted: Boolean,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onToggleWishlist: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -298,6 +305,14 @@ private fun GameProgressRow(
                         )
                     }
                 }
+            }
+
+            IconButton(onClick = onToggleWishlist) {
+                Icon(
+                    imageVector = if (isWishlisted) WishlistIcons.Bookmark else WishlistIcons.BookmarkBorder,
+                    contentDescription = if (isWishlisted) "Remove from wishlist" else "Add to wishlist",
+                    tint = if (isWishlisted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             IconButton(onClick = onToggleFavorite) {
