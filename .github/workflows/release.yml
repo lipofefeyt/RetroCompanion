@@ -1,0 +1,98 @@
+name: Release
+
+# Builds a signed APK and publishes it as a GitHub Release when a version tag is pushed:
+#   git tag v1.0 && git push origin v1.0
+# The tag must match versionName in app/build.gradle.kts (v1.0 <-> "1.0"). Signing secrets are
+# described in RELEASING.md; they live only in GitHub Actions secrets, never in the repo.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the tag matches versionName
+        run: |
+          version_name=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          if [ "$TAG" != "v$version_name" ]; then
+            echo "Tag $TAG does not match versionName \"$version_name\" in app/build.gradle.kts." >&2
+            echo "Bump versionName/versionCode, commit, then re-tag." >&2
+            exit 1
+          fi
+          echo "VERSION_NAME=$version_name" >> "$GITHUB_ENV"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run unit tests and release lint
+        run: ./gradlew testDebugUnitTest lintRelease --console=plain
+
+      - name: Restore the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing repository secret $name (see RELEASING.md)." >&2
+              exit 1
+            fi
+          done
+          keystore="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          # keystore.properties is git-ignored; app/build.gradle.kts signs release builds from it.
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+
+      - name: Build signed release APK and bundle
+        run: ./gradlew assembleRelease bundleRelease --console=plain
+
+      - name: Verify the APK is signed
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
+
+      - name: Name the release files
+        run: |
+          mkdir release-files
+          cp app/build/outputs/apk/release/app-release.apk "release-files/RetroCompanion-$TAG.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "release-files/RetroCompanion-$TAG.aab"
+          (cd release-files && sha256sum * > SHA256SUMS.txt)
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" release-files/* \
+            --title "RetroCompanion $VERSION_NAME" \
+            --generate-notes
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f keystore.properties "$RUNNER_TEMP/release.jks"

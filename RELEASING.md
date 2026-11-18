@@ -21,9 +21,7 @@ is recoverable through Play Console support, but it is slow and painful.
 
 ```sh
 # Windows (Android Studio's bundled JDK):
-"C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v ^
-  -keystore C:\Users\<you>\keystores\retrocompanion-upload.jks ^
-  -alias upload -keyalg RSA -keysize 2048 -validity 10000
+"C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v -keystore C:\Users\<you>\keystores\retrocompanion-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 `keytool` prompts for the keystore password, the key password and your details. Then:
@@ -33,10 +31,19 @@ is recoverable through Play Console support, but it is slow and painful.
 3. `./gradlew bundleRelease` (or `assembleRelease`) now produces a **signed** build. Without
    `keystore.properties` the release build is simply unsigned, which is what CI produces.
 
-This is the *upload* key. Enroll in **Play App Signing** in the Play Console: Google holds the real
-app-signing key and re-signs what you upload, so a lost upload key can be reset.
+`keyPassword` is the answer you gave to keytool's "key password" prompt. If you pressed Enter there,
+it is the same as `storePassword` (modern PKCS12 keystores use one password for both).
 
-## Each release
+**GitHub Releases only (no Play):** this keystore is the real signing key. Phones check every
+update against it, so if it is lost nobody can update in place (they must uninstall and lose their
+data). Keep a backup.
+
+**Google Play only:** this is the *upload* key. When you first upload, enroll in **Play App
+Signing** in the Play Console: Google then holds the real app-signing key and re-signs what you
+upload, so a lost upload key can be reset. An app already installed from GitHub can't update to a
+Play build signed with a different key, so decide up front which route a given key is for.
+
+## Each release (Google Play)
 
 1. **Bump the version** in `app/build.gradle.kts` (`defaultConfig`): `versionCode` must increase on
    every upload to Play (it is an integer, never reused); `versionName` is the human-readable one
@@ -52,6 +59,36 @@ app-signing key and re-signs what you upload, so a lost upload key can be reset.
 
 CI builds an **unsigned** release bundle and runs release lint on every push, so R8 and
 release-only problems are caught before this step.
+
+## Publishing on GitHub Releases (no Play account needed)
+
+Pushing a tag like `v1.0` runs `.github/workflows/release.yml`, which builds a **signed** APK and
+AAB and attaches them, with a `SHA256SUMS.txt`, to a new GitHub Release. The tag must equal
+`v` + `versionName` (tag `v1.0` needs `versionName = "1.0"`), otherwise the workflow fails before
+building. Users can sideload the APK, or follow the repo's releases with Obtainium.
+
+One-time setup, in the repo's **Settings > Secrets and variables > Actions**, add four repository
+secrets (type them yourself; they are never printed or stored in the repo):
+
+| Secret              | Value                                                                  |
+| ------------------- | ---------------------------------------------------------------------- |
+| `KEYSTORE_BASE64`   | the keystore file, base64-encoded (see below)                          |
+| `KEYSTORE_PASSWORD` | the keystore password                                                  |
+| `KEY_ALIAS`         | the key alias (`upload` if you used the command above)                 |
+| `KEY_PASSWORD`      | the key password                                                       |
+
+Encode the keystore without line breaks (PowerShell):
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Users\<you>\keystores\retrocompanion-upload.jks")) | Set-Clipboard
+```
+
+(Git Bash / WSL: `base64 -w0 retrocompanion-upload.jks`.) Avoid backslashes in the passwords, since
+they are written to a `.properties` file on the runner.
+
+Each release: bump `versionCode`/`versionName`, commit and push, then
+`git tag v1.1 && git push origin v1.1`. Keep using the same keystore for every release: Android only
+installs an update over an existing install if it is signed with the same key.
 
 ## Minification (R8)
 
