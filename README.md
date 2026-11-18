@@ -79,6 +79,12 @@ notification permission; if you deny it (or notifications are off in system sett
 stays off and a button opens the app's notification settings. Android may delay the background
 check well beyond 15 minutes when battery saver or Doze is active.
 
+## Privacy and releasing
+
+See the [privacy policy](docs/privacy.md) for what the app stores and sends (everything stays on the
+device except requests to RetroAchievements). [RELEASING.md](RELEASING.md) covers signing and the
+release checklist, and `store/` holds the draft Google Play listing text and Data safety answers.
+
 ## Project layout
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for screens, layers, data flow, and library choices, and
