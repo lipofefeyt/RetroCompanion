@@ -26,3 +26,30 @@ is recoverable through Play Console support, but it is slow and painful.
 
 This is the *upload* key. Enroll in **Play App Signing** in the Play Console: Google holds the real
 app-signing key and re-signs what you upload, so a lost upload key can be reset.
+
+## Minification (R8)
+
+Release builds run R8, but `optimization.packageScope` in `app/build.gradle.kts` limits it to
+`androidx.**`, `kotlin.**` and `kotlinx.**`. App code, Retrofit, OkHttp, Gson, Tink and Coil are
+outside that scope, so they are **not renamed or shrunk** (confirm in
+`app/build/outputs/mapping/release/mapping.txt`: it should contain no `com.example` classes).
+
+That matters because several classes are saved as JSON by Gson using their field names, with no
+`@SerializedName`: `WishlistEntry`, `UnlockStamp`, `AchievementOfTheWeek`, `PollingState`,
+`SeenUnlock`. Renaming those fields would silently lose saved data on update.
+`app/src/main/keepRules/persisted-models.keep` keeps them explicitly so that stays true even if the
+scope is widened. Notes:
+
+- AGP 9 reads keep rules from the `keepRules` source folder, and files there must end in `.keep`
+  (a `.pro` file fails the build with a clear message).
+- If you add a class that is persisted through Gson without `@SerializedName`, list it in that file.
+- After any change to R8 scope or rules, build `assembleRelease`, check `configuration.txt` in the
+  same mapping folder shows your rules, and test the minified build on a device (see below).
+
+## Testing the minified build
+
+Debug builds don't exercise R8. Before every upload, install a signed release build and check:
+first-run credentials, all six tabs, Game Details, the wishlist (add, restart the app, import),
+favorites, Stats heatmap, Achievement of the Week, a share card, notifications (permission and a
+real unlock), clearing credentials; then install a newer build over it and confirm saved data
+survives.

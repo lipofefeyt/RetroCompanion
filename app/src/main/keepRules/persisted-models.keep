@@ -1,0 +1,15 @@
+# These classes are saved to DataStore as JSON by Gson using their *field names* (they have no
+# @SerializedName). If R8 ever renamed those fields, data saved by one build would silently fail to
+# load in the next, e.g. the wishlist or the background-polling state.
+#
+# Today app code is outside the R8 scope (see packageScope in app/build.gradle.kts), so nothing here
+# is renamed anyway. These rules make that guarantee explicit and keep it if the scope is widened.
+# When adding a class that is persisted through Gson without @SerializedName, list it here.
+
+-keepattributes Signature, *Annotation*
+
+-keep class com.example.retrocompanion.data.model.WishlistEntry { *; }
+-keep class com.example.retrocompanion.data.model.UnlockStamp { *; }
+-keep class com.example.retrocompanion.data.model.AchievementOfTheWeek { *; }
+-keep class com.example.retrocompanion.data.polling.PollingState { *; }
+-keep class com.example.retrocompanion.data.polling.SeenUnlock { *; }
