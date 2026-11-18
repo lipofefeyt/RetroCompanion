@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Star as OutlinedStar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.retrocompanion.data.model.GameProgressSummary
+import com.example.retrocompanion.data.model.WishlistEntry
 import com.example.retrocompanion.ui.common.CredentialsStatus
 import com.example.retrocompanion.ui.common.SectionState
 import com.example.retrocompanion.ui.components.EmptySectionCard
@@ -107,12 +109,33 @@ fun GameLibraryScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         )
+                        FilterChip(
+                            selected = uiState.showWishlistOnly,
+                            onClick = { viewModel.onWishlistFilterChanged(!uiState.showWishlistOnly) },
+                            label = { Text("Wishlist (${uiState.wishlistEntries.size})") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (uiState.showWishlistOnly) WishlistIcons.Bookmark else WishlistIcons.BookmarkBorder,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                        )
                         PullToRefreshBox(
                             isRefreshing = uiState.isRefreshing,
                             onRefresh = { viewModel.refresh() },
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            when (val state = uiState.games) {
+                            if (uiState.showWishlistOnly) {
+                                WishlistList(
+                                    items = uiState.wishlistItems,
+                                    hasAnyWishlisted = uiState.wishlistEntries.isNotEmpty(),
+                                    searchQuery = uiState.searchQuery,
+                                    onGameClick = onGameClick,
+                                    onRemove = { viewModel.toggleWishlistEntry(it) }
+                                )
+                            } else when (val state = uiState.games) {
                                 is SectionState.Loading -> LoadingScreen(message = "Loading your game library…")
 
                                 is SectionState.Error -> Column(modifier = Modifier.padding(16.dp)) {
@@ -320,6 +343,113 @@ private fun GameProgressRow(
                     imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.OutlinedStar,
                     contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
                     tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WishlistList(
+    items: List<WishlistItem>,
+    hasAnyWishlisted: Boolean,
+    searchQuery: String,
+    onGameClick: (Int) -> Unit,
+    onRemove: (WishlistEntry) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (items.isEmpty()) {
+            item {
+                EmptySectionCard(
+                    title = if (hasAnyWishlisted) "No Matches" else "Your Wishlist Is Empty",
+                    subtitle = if (hasAnyWishlisted) {
+                        "No wishlisted games match \"$searchQuery\"."
+                    } else {
+                        "Tap the bookmark on a game to add it here."
+                    },
+                    icon = if (hasAnyWishlisted) "🔍" else "🔖"
+                )
+            }
+        } else {
+            items(items = items, key = { "wish-${it.entry.gameId}" }) { item ->
+                WishlistRow(
+                    item = item,
+                    onClick = { onGameClick(item.entry.gameId) },
+                    onRemove = { onRemove(item.entry) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WishlistRow(
+    item: WishlistItem,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val entry = item.entry
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NetworkImage(
+                url = entry.iconUrl,
+                contentDescription = entry.title,
+                placeholderGlyph = "🎮",
+                modifier = Modifier.size(56.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                entry.consoleName?.let { console ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = console,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                val progress = item.progress
+                Text(
+                    text = if (progress != null && progress.maxPossible > 0) {
+                        "${progress.numAwarded} / ${progress.maxPossible} unlocked (${progress.progressPercentage}%)"
+                    } else {
+                        "Not started yet"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    imageVector = WishlistIcons.Bookmark,
+                    contentDescription = "Remove from wishlist",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }

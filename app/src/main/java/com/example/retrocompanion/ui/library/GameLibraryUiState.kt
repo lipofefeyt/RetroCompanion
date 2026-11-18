@@ -1,6 +1,7 @@
 package com.example.retrocompanion.ui.library
 
 import com.example.retrocompanion.data.model.GameProgressSummary
+import com.example.retrocompanion.data.model.WishlistEntry
 import com.example.retrocompanion.ui.common.CredentialsStatus
 import com.example.retrocompanion.ui.common.SectionState
 
@@ -9,9 +10,26 @@ data class GameLibraryUiState(
     val isRefreshing: Boolean = false,
     val searchQuery: String = "",
     val favoriteGameIds: Set<Int> = emptySet(),
-    val wishlistGameIds: Set<Int> = emptySet(),
+    val wishlistEntries: List<WishlistEntry> = emptyList(),
+    val showWishlistOnly: Boolean = false,
     val games: SectionState<List<GameProgressSummary>> = SectionState.Loading
 ) {
+    val wishlistGameIds: Set<Int>
+        get() = wishlistEntries.mapTo(HashSet()) { it.gameId }
+
+    /**
+     * Wishlisted games filtered by [searchQuery], each joined with the user's progress when the
+     * game is in the loaded library. Built from the locally stored entries, so it also includes
+     * games the user has never played and works before (or without) the library loading.
+     */
+    val wishlistItems: List<WishlistItem>
+        get() {
+            val progressById = (games as? SectionState.Success)?.data?.associateBy { it.gameId }.orEmpty()
+            return wishlistEntries
+                .filter { searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true) }
+                .map { WishlistItem(it, progressById[it.gameId]) }
+        }
+
     /** Pinned favorite games loaded in the user's library. */
     val favoriteGames: List<GameProgressSummary>
         get() {
@@ -28,3 +46,9 @@ data class GameLibraryUiState(
             return success.data.filter { it.title.contains(searchQuery, ignoreCase = true) }
         }
 }
+
+/** A wishlist entry plus the user's progress in it, if the game is in their library. */
+data class WishlistItem(
+    val entry: WishlistEntry,
+    val progress: GameProgressSummary?
+)

@@ -58,7 +58,7 @@ class GameLibraryViewModel @JvmOverloads constructor(
         }
         viewModelScope.launch {
             wishlistSource.wishlistFlow.collectLatest { entries ->
-                _uiState.update { it.copy(wishlistGameIds = entries.map { e -> e.gameId }.toSet()) }
+                _uiState.update { it.copy(wishlistEntries = entries) }
             }
         }
     }
@@ -74,6 +74,14 @@ class GameLibraryViewModel @JvmOverloads constructor(
                 )
             )
         }
+    }
+
+    fun toggleWishlistEntry(entry: WishlistEntry) {
+        viewModelScope.launch { wishlistSource.toggle(entry) }
+    }
+
+    fun onWishlistFilterChanged(showWishlistOnly: Boolean) {
+        _uiState.update { it.copy(showWishlistOnly = showWishlistOnly) }
     }
 
     fun onSearchQueryChanged(query: String) {

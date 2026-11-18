@@ -195,4 +195,29 @@ class GameLibraryViewModelTest {
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.wishlistGameIds.isEmpty())
         }
+
+    @Test
+    fun `wishlist filter toggles and wishlist entries are exposed even without library data`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val entry = com.example.retrocompanion.data.model.WishlistEntry(gameId = 5, title = "Sample Unplayed Game")
+            val api = FakeRetroAchievementsApi(completionProgressResult = { _, _ -> throw httpException(500) })
+            val wishlist = FakeWishlistSource(listOf(entry))
+            val viewModel = GameLibraryViewModel(
+                Application(),
+                FakeUserCredentialsSource(sampleCredentials),
+                RetroAchievementsRepository(api),
+                emptyCache(),
+                wishlist
+            )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.games is SectionState.Error)
+            viewModel.onWishlistFilterChanged(true)
+            assertTrue(viewModel.uiState.value.showWishlistOnly)
+            assertEquals(listOf(5), viewModel.uiState.value.wishlistItems.map { it.entry.gameId })
+
+            viewModel.toggleWishlistEntry(entry)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.wishlistItems.isEmpty())
+        }
 }
