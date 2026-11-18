@@ -5,6 +5,7 @@ import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
 import com.example.retrocompanion.data.model.UserProfileSummary
+import com.example.retrocompanion.data.model.WantToPlayPage
 import com.example.retrocompanion.data.remote.RetroAchievementsApi
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -28,7 +29,8 @@ class FakeRetroAchievementsApi(
     var gameInfoResult: suspend () -> GameInfo = { GameInfo() },
     var completionProgressResult: suspend (count: Int, offset: Int) -> UserCompletionProgressPage =
         { _, _ -> UserCompletionProgressPage() },
-    var earnedBetweenResult: suspend (from: Long, to: Long) -> List<RecentUnlock> = { _, _ -> emptyList() }
+    var earnedBetweenResult: suspend (from: Long, to: Long) -> List<RecentUnlock> = { _, _ -> emptyList() },
+    var wantToPlayResult: suspend (count: Int, offset: Int) -> WantToPlayPage = { _, _ -> WantToPlayPage() }
 ) : RetroAchievementsApi {
 
     /** The lookback (m) of the most recent getRecentAchievements call, for asserting on it. */
@@ -77,6 +79,14 @@ class FakeRetroAchievementsApi(
         from: Long,
         to: Long
     ): List<RecentUnlock> = earnedBetweenResult(from, to)
+
+    override suspend fun getUserWantToPlayList(
+        authUser: String,
+        apiKey: String,
+        targetUser: String,
+        count: Int,
+        offset: Int
+    ): WantToPlayPage = wantToPlayResult(count, offset)
 
     override suspend fun getUserCompletionProgress(
         authUser: String,

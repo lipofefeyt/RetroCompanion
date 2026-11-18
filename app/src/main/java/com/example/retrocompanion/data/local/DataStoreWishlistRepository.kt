@@ -30,6 +30,16 @@ fun decodeWishlist(json: String?): List<WishlistEntry> {
 
 fun encodeWishlist(entries: List<WishlistEntry>): String = gson.toJson(entries, wishlistType)
 
+/**
+ * Appends the [incoming] games that aren't already in [existing] (ignoring repeats within
+ * [incoming] too and entries without a game id). Never removes or reorders existing entries.
+ */
+fun mergeWishlist(existing: List<WishlistEntry>, incoming: List<WishlistEntry>): Pair<List<WishlistEntry>, Int> {
+    val knownIds = existing.mapTo(HashSet()) { it.gameId }
+    val additions = incoming.filter { it.gameId > 0 && knownIds.add(it.gameId) }
+    return (existing + additions) to additions.size
+}
+
 class DataStoreWishlistRepository(
     private val dataStore: DataStore<Preferences>
 ) : WishlistSource {
@@ -49,5 +59,15 @@ class DataStoreWishlistRepository(
             }
             preferences[wishlistKey] = encodeWishlist(updated)
         }
+    }
+
+    override suspend fun addAll(entries: List<WishlistEntry>): Int {
+        var added = 0
+        dataStore.edit { preferences ->
+            val (merged, count) = mergeWishlist(decodeWishlist(preferences[wishlistKey]), entries)
+            added = count
+            if (count > 0) preferences[wishlistKey] = encodeWishlist(merged)
+        }
+        return added
     }
 }

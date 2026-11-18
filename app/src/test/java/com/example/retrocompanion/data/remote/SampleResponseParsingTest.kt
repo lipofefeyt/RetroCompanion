@@ -4,6 +4,7 @@ import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
+import com.example.retrocompanion.data.model.WantToPlayPage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.junit.Assert.assertEquals
@@ -125,5 +126,26 @@ class SampleResponseParsingTest {
         assertEquals(16, sonic.numAwarded)
         assertEquals(50, sonic.progressPercentage)
         assertEquals("https://media.retroachievements.org/Images/001448.png", sonic.iconUrl)
+    }
+
+    @Test
+    fun `parses sample want to play list response`() {
+        val page = gson.fromJson(readResource("sample_want_to_play.json"), WantToPlayPage::class.java)
+
+        assertEquals(2, page.count)
+        assertEquals(2, page.total)
+        val first = page.results[0]
+        assertEquals(1001, first.gameId)
+        assertEquals("Sample Quest Adventure", first.title)
+        assertEquals("Sample Console", first.consoleName)
+        assertEquals(3, first.consoleId)
+        assertEquals(400, first.pointsTotal)
+        assertEquals(42, first.achievementsPublished)
+
+        val entry = first.toWishlistEntry()
+        assertEquals(1001, entry.gameId)
+        assertEquals("Sample Quest Adventure", entry.title)
+        assertEquals("Sample Console", entry.consoleName)
+        assertEquals("https://media.retroachievements.org/Images/000001.png", entry.iconUrl)
     }
 }

@@ -1,0 +1,24 @@
+{
+  "Count": 2,
+  "Total": 2,
+  "Results": [
+    {
+      "ID": 1001,
+      "Title": "Sample Quest Adventure",
+      "ImageIcon": "/Images/000001.png",
+      "ConsoleID": 3,
+      "ConsoleName": "Sample Console",
+      "PointsTotal": 400,
+      "AchievementsPublished": 42
+    },
+    {
+      "ID": 1002,
+      "Title": "Sample Racing Game",
+      "ImageIcon": "/Images/000002.png",
+      "ConsoleID": 7,
+      "ConsoleName": "Another Sample Console",
+      "PointsTotal": 250,
+      "AchievementsPublished": 30
+    }
+  ]
+}

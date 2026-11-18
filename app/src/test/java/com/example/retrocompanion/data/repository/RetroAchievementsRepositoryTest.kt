@@ -5,6 +5,8 @@ import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.UnlockStamp
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
 import com.example.retrocompanion.data.model.UserCredentials
+import com.example.retrocompanion.data.model.WantToPlayGame
+import com.example.retrocompanion.data.model.WantToPlayPage
 import com.example.retrocompanion.testutil.FakeRetroAchievementsApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -89,5 +91,38 @@ class RetroAchievementsRepositoryTest {
 
         assertEquals(3, callCount)
         assertEquals(1500, result.size)
+    }
+
+    private fun wantToPlay(vararg ids: Int) = ids.map { WantToPlayGame(gameId = it, title = "Sample $it") }
+
+    @Test
+    fun `getWantToPlayList pages through until Total is reached`() = runTest {
+        val offsets = mutableListOf<Int>()
+        val api = FakeRetroAchievementsApi(wantToPlayResult = { _, offset ->
+            offsets += offset
+            when (offset) {
+                0 -> WantToPlayPage(count = 2, total = 3, results = wantToPlay(1, 2))
+                else -> WantToPlayPage(count = 1, total = 3, results = wantToPlay(3))
+            }
+        })
+
+        val result = RetroAchievementsRepository(api).getWantToPlayList(sampleCredentials).getOrThrow()
+
+        assertEquals(listOf(1, 2, 3), result.map { it.gameId })
+        assertEquals(listOf(0, 2), offsets)
+    }
+
+    @Test
+    fun `getWantToPlayList stops on an empty page and at the safety cap`() = runTest {
+        val emptyApi = FakeRetroAchievementsApi(wantToPlayResult = { _, _ -> WantToPlayPage(total = 10) })
+        assertEquals(emptyList<WantToPlayGame>(), RetroAchievementsRepository(emptyApi).getWantToPlayList(sampleCredentials).getOrThrow())
+
+        var calls = 0
+        val endlessApi = FakeRetroAchievementsApi(wantToPlayResult = { _, _ ->
+            calls++
+            WantToPlayPage(count = 1, total = 1_000_000, results = wantToPlay(calls))
+        })
+        RetroAchievementsRepository(endlessApi).getWantToPlayList(sampleCredentials).getOrThrow()
+        assertEquals(3, calls)
     }
 }

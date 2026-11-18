@@ -5,6 +5,17 @@ import com.example.retrocompanion.data.model.WishlistEntry
 import com.example.retrocompanion.ui.common.CredentialsStatus
 import com.example.retrocompanion.ui.common.SectionState
 
+/** Progress of importing the site's Want to Play list into the local wishlist. */
+sealed interface WishlistImportState {
+    data object Idle : WishlistImportState
+    data object Running : WishlistImportState
+
+    /** [added] games were new; [alreadyPresent] were already on the wishlist. */
+    data class Done(val added: Int, val alreadyPresent: Int) : WishlistImportState
+
+    data class Failed(val message: String) : WishlistImportState
+}
+
 data class GameLibraryUiState(
     val credentialsStatus: CredentialsStatus = CredentialsStatus.Resolving,
     val isRefreshing: Boolean = false,
@@ -12,6 +23,7 @@ data class GameLibraryUiState(
     val favoriteGameIds: Set<Int> = emptySet(),
     val wishlistEntries: List<WishlistEntry> = emptyList(),
     val showWishlistOnly: Boolean = false,
+    val wishlistImport: WishlistImportState = WishlistImportState.Idle,
     val games: SectionState<List<GameProgressSummary>> = SectionState.Loading
 ) {
     val wishlistGameIds: Set<Int>

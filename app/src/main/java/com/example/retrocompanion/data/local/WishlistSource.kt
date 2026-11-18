@@ -14,4 +14,11 @@ interface WishlistSource {
 
     /** Adds [entry] if its game isn't wishlisted, otherwise removes that game. */
     suspend fun toggle(entry: WishlistEntry)
+
+    /**
+     * Adds the games in [entries] that aren't already wishlisted and removes nothing; returns how
+     * many were actually added. New games go after the existing ones, so a bulk import never
+     * buries what the user added by hand.
+     */
+    suspend fun addAll(entries: List<WishlistEntry>): Int
 }

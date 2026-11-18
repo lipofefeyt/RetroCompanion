@@ -57,6 +57,33 @@ class DataStoreWishlistRepositoryTest {
     }
 
     @Test
+    fun `mergeWishlist appends only new games and never removes or reorders`() {
+        val third = WishlistEntry(gameId = 3, title = "Sample Game Three")
+        val (merged, added) = mergeWishlist(
+            existing = listOf(second, first),
+            incoming = listOf(first.copy(title = "Renamed on site"), third, third, WishlistEntry(gameId = 0, title = "No Id"))
+        )
+
+        assertEquals(listOf(2, 1, 3), merged.map { it.gameId })
+        assertEquals(1, added)
+        // An existing entry is left exactly as the user had it.
+        assertEquals("Sample Game One", merged.first { it.gameId == 1 }.title)
+    }
+
+    @Test
+    fun `addAll merges into the stored wishlist and reports how many were new`() = runTest {
+        val repository = repo()
+        repository.toggle(first)
+
+        val addedFirst = repository.addAll(listOf(first, second))
+        val addedAgain = repository.addAll(listOf(first, second))
+
+        assertEquals(1, addedFirst)
+        assertEquals(0, addedAgain)
+        assertEquals(listOf(1, 2), repository.wishlistFlow.first().map { it.gameId })
+    }
+
+    @Test
     fun `corrupt or blank stored data decodes to an empty list`() {
         assertTrue(decodeWishlist(null).isEmpty())
         assertTrue(decodeWishlist("").isEmpty())

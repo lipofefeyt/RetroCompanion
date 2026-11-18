@@ -76,6 +76,44 @@ class GameLibraryViewModel @JvmOverloads constructor(
         }
     }
 
+    /**
+     * One-way import of the site's Want to Play list: adds games to the local wishlist and never
+     * removes anything. (The Web API can't write to the site list, so nothing goes back.)
+     */
+    fun importWantToPlay() {
+        if (_uiState.value.wishlistImport == WishlistImportState.Running) return
+        val credentials = currentCredentials
+        if (!credentials.isValid) {
+            _uiState.update {
+                it.copy(wishlistImport = WishlistImportState.Failed("Save your username and API key in Settings first."))
+            }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(wishlistImport = WishlistImportState.Running) }
+            val result = repository.getWantToPlayList(credentials)
+            val newState = if (result.isSuccess) {
+                val games = result.getOrThrow()
+                val added = wishlistSource.addAll(games.map { it.toWishlistEntry() })
+                WishlistImportState.Done(added = added, alreadyPresent = games.size - added)
+            } else {
+                WishlistImportState.Failed(importErrorMessage(result.exceptionOrNull()))
+            }
+            _uiState.update { it.copy(wishlistImport = newState) }
+        }
+    }
+
+    fun dismissWishlistImport() {
+        _uiState.update { it.copy(wishlistImport = WishlistImportState.Idle) }
+    }
+
+    private fun importErrorMessage(error: Throwable?): String = when (error) {
+        is RetroApiException.InvalidApiKey -> "RetroAchievements rejected your API key. Check it in Settings."
+        is RetroApiException.RateLimited -> "RetroAchievements is limiting requests right now. Try again shortly."
+        is RetroApiException.NoNetwork -> "No network connection. Try again when you're online."
+        else -> "Couldn't import your Want to Play list."
+    }
+
     fun toggleWishlistEntry(entry: WishlistEntry) {
         viewModelScope.launch { wishlistSource.toggle(entry) }
     }

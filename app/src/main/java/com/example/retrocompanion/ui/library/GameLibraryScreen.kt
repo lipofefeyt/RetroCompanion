@@ -27,10 +27,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -133,7 +135,10 @@ fun GameLibraryScreen(
                                     hasAnyWishlisted = uiState.wishlistEntries.isNotEmpty(),
                                     searchQuery = uiState.searchQuery,
                                     onGameClick = onGameClick,
-                                    onRemove = { viewModel.toggleWishlistEntry(it) }
+                                    onRemove = { viewModel.toggleWishlistEntry(it) },
+                                    importState = uiState.wishlistImport,
+                                    onImport = { viewModel.importWantToPlay() },
+                                    onDismissImport = { viewModel.dismissWishlistImport() }
                                 )
                             } else when (val state = uiState.games) {
                                 is SectionState.Loading -> LoadingScreen(message = "Loading your game library…")
@@ -355,13 +360,19 @@ private fun WishlistList(
     hasAnyWishlisted: Boolean,
     searchQuery: String,
     onGameClick: (Int) -> Unit,
-    onRemove: (WishlistEntry) -> Unit
+    onRemove: (WishlistEntry) -> Unit,
+    importState: WishlistImportState,
+    onImport: () -> Unit,
+    onDismissImport: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item {
+            WishlistImportCard(state = importState, onImport = onImport, onDismiss = onDismissImport)
+        }
         if (items.isEmpty()) {
             item {
                 EmptySectionCard(
@@ -454,4 +465,66 @@ private fun WishlistRow(
             }
         }
     }
+}
+
+@Composable
+private fun WishlistImportCard(
+    state: WishlistImportState,
+    onImport: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "Import your Want to Play list from retroachievements.org into this wishlist. " +
+                    "Games already here are kept. This is one-way: changes you make in this app are " +
+                    "not sent back to the site.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onImport,
+                enabled = state != WishlistImportState.Running
+            ) {
+                Text(if (state == WishlistImportState.Running) "Importing…" else "Import from RetroAchievements")
+            }
+            when (state) {
+                WishlistImportState.Idle, WishlistImportState.Running -> Unit
+                is WishlistImportState.Done -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = importSummary(state),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    TextButton(onClick = onDismiss) { Text("Dismiss") }
+                }
+                is WishlistImportState.Failed -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    TextButton(onClick = onDismiss) { Text("Dismiss") }
+                }
+            }
+        }
+    }
+}
+
+private fun importSummary(done: WishlistImportState.Done): String = when {
+    done.added == 0 && done.alreadyPresent == 0 -> "Your Want to Play list on the site is empty."
+    done.added == 0 -> "Nothing new: all ${done.alreadyPresent} games were already on your wishlist."
+    done.alreadyPresent == 0 -> "Added ${done.added} ${if (done.added == 1) "game" else "games"} to your wishlist."
+    else -> "Added ${done.added} ${if (done.added == 1) "game" else "games"}; " +
+        "${done.alreadyPresent} already on your wishlist."
 }

@@ -5,6 +5,9 @@ import com.example.retrocompanion.data.local.CacheKeys
 import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
+import com.example.retrocompanion.data.model.WantToPlayGame
+import com.example.retrocompanion.data.model.WantToPlayPage
+import com.example.retrocompanion.data.model.WishlistEntry
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import com.example.retrocompanion.testutil.FakeCacheDao
@@ -16,6 +19,7 @@ import com.example.retrocompanion.testutil.httpException
 import com.example.retrocompanion.ui.common.CredentialsStatus
 import com.example.retrocompanion.ui.common.SectionState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -220,4 +224,112 @@ class GameLibraryViewModelTest {
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.wishlistItems.isEmpty())
         }
+
+    private fun importViewModel(
+        wishlist: FakeWishlistSource,
+        api: FakeRetroAchievementsApi,
+        credentials: UserCredentials = sampleCredentials
+    ) = GameLibraryViewModel(
+        Application(),
+        FakeUserCredentialsSource(credentials),
+        RetroAchievementsRepository(api),
+        emptyCache(),
+        wishlist
+    )
+
+    private fun siteList(vararg ids: Int) = WantToPlayPage(
+        count = ids.size,
+        total = ids.size,
+        results = ids.map { WantToPlayGame(gameId = it, title = "Site Game $it", consoleName = "Sample Console") }
+    )
+
+    @Test
+    fun `importing the site list adds new games and keeps what is already on the wishlist`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val local = WishlistEntry(gameId = 1, title = "Local Game")
+            val wishlist = FakeWishlistSource(listOf(local))
+            val api = FakeRetroAchievementsApi(wantToPlayResult = { _, _ -> siteList(1, 2, 3) })
+            val viewModel = importViewModel(wishlist, api)
+            advanceUntilIdle()
+
+            viewModel.importWantToPlay()
+            advanceUntilIdle()
+
+            assertEquals(WishlistImportState.Done(added = 2, alreadyPresent = 1), viewModel.uiState.value.wishlistImport)
+            val stored = wishlist.wishlistFlow.first()
+            assertEquals(listOf(1, 2, 3), stored.map { it.gameId })
+            assertEquals("Local Game", stored.first { it.gameId == 1 }.title)
+        }
+
+    @Test
+    fun `importing twice does not add anything the second time`() = runTest(mainDispatcherRule.dispatcher) {
+        val wishlist = FakeWishlistSource()
+        val api = FakeRetroAchievementsApi(wantToPlayResult = { _, _ -> siteList(1, 2) })
+        val viewModel = importViewModel(wishlist, api)
+        advanceUntilIdle()
+
+        viewModel.importWantToPlay()
+        advanceUntilIdle()
+        viewModel.importWantToPlay()
+        advanceUntilIdle()
+
+        assertEquals(WishlistImportState.Done(added = 0, alreadyPresent = 2), viewModel.uiState.value.wishlistImport)
+        assertEquals(2, wishlist.wishlistFlow.first().size)
+    }
+
+    @Test
+    fun `an empty site list is reported as done with nothing`() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = importViewModel(FakeWishlistSource(), FakeRetroAchievementsApi())
+        advanceUntilIdle()
+
+        viewModel.importWantToPlay()
+        advanceUntilIdle()
+
+        assertEquals(WishlistImportState.Done(added = 0, alreadyPresent = 0), viewModel.uiState.value.wishlistImport)
+    }
+
+    @Test
+    fun `a failed import reports a message, changes nothing and never shows the key`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val local = WishlistEntry(gameId = 1, title = "Local Game")
+            val wishlist = FakeWishlistSource(listOf(local))
+            val api = FakeRetroAchievementsApi(wantToPlayResult = { _, _ -> throw httpException(401) })
+            val viewModel = importViewModel(wishlist, api)
+            advanceUntilIdle()
+
+            viewModel.importWantToPlay()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value.wishlistImport as WishlistImportState.Failed
+            assertTrue(state.message.contains("API key"))
+            assertTrue(!state.message.contains(sampleCredentials.apiKey))
+            assertEquals(listOf(local), wishlist.wishlistFlow.first())
+        }
+
+    @Test
+    fun `importing without saved credentials asks for them and makes no request`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            var called = false
+            val api = FakeRetroAchievementsApi(wantToPlayResult = { _, _ -> called = true; WantToPlayPage() })
+            val viewModel = importViewModel(FakeWishlistSource(), api, credentials = UserCredentials())
+            advanceUntilIdle()
+
+            viewModel.importWantToPlay()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.wishlistImport is WishlistImportState.Failed)
+            assertTrue(!called)
+        }
+
+    @Test
+    fun `dismissing the import message returns to idle`() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = importViewModel(FakeWishlistSource(), FakeRetroAchievementsApi())
+        advanceUntilIdle()
+        viewModel.importWantToPlay()
+        advanceUntilIdle()
+
+        viewModel.dismissWishlistImport()
+
+        assertEquals(WishlistImportState.Idle, viewModel.uiState.value.wishlistImport)
+    }
 }

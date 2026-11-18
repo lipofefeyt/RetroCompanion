@@ -7,6 +7,7 @@ import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.UnlockStamp
 import com.example.retrocompanion.data.model.UserCredentials
 import com.example.retrocompanion.data.model.UserProfileSummary
+import com.example.retrocompanion.data.model.WantToPlayGame
 import com.example.retrocompanion.data.remote.RetroAchievementsApi
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.remote.RetrofitClient
@@ -131,6 +132,32 @@ class RetroAchievementsRepository(
     }
 
     /**
+     * Fetches the user's whole Want to Play list from the site, paging through
+     * API_GetUserWantToPlayList.php until the reported total is reached (or a safety cap of
+     * [MAX_WANT_TO_PLAY_PAGES] pages).
+     */
+    suspend fun getWantToPlayList(
+        credentials: UserCredentials
+    ): Result<List<WantToPlayGame>> = safeApiCall {
+        require(credentials.isValid) { "User credentials are invalid or missing." }
+        val accumulated = mutableListOf<WantToPlayGame>()
+        var offset = 0
+        repeat(MAX_WANT_TO_PLAY_PAGES) {
+            val page = api.getUserWantToPlayList(
+                authUser = credentials.username,
+                apiKey = credentials.apiKey,
+                targetUser = credentials.username,
+                count = WANT_TO_PLAY_PAGE_SIZE,
+                offset = offset
+            )
+            accumulated += page.results
+            if (page.results.isEmpty() || accumulated.size >= page.total) return@safeApiCall accumulated
+            offset += page.results.size
+        }
+        accumulated
+    }
+
+    /**
      * Runs [block], translating network/HTTP failures into the distinct [RetroApiException]
      * subtypes so callers can tell a rejected key, rate limiting, no network, and an unexpected
      * response apart.
@@ -152,5 +179,7 @@ class RetroAchievementsRepository(
         private const val MAX_RECENTLY_PLAYED_COUNT = 50
         private const val LIBRARY_PAGE_SIZE = 500
         private const val MAX_LIBRARY_PAGES = 3
+        private const val WANT_TO_PLAY_PAGE_SIZE = 500
+        private const val MAX_WANT_TO_PLAY_PAGES = 3
     }
 }

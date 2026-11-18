@@ -5,6 +5,7 @@ import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
 import com.example.retrocompanion.data.model.UserProfileSummary
+import com.example.retrocompanion.data.model.WantToPlayPage
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -80,6 +81,24 @@ interface RetroAchievementsApi {
         @Query("f") from: Long,
         @Query("t") to: Long
     ): List<RecentUnlock>
+
+    /**
+     * Fetches a page of the user's Want to Play list from the site. Read-only: the Web API has
+     * no endpoint to add or remove entries. Only returned for the account itself or users that
+     * follow each other.
+     * Docs: https://api-docs.retroachievements.org/v1/get-user-want-to-play-list.html
+     *
+     * @param count Number of records to return (c). Default 100, maximum 500.
+     * @param offset Number of records to skip (o). Default 0.
+     */
+    @GET("API_GetUserWantToPlayList.php")
+    suspend fun getUserWantToPlayList(
+        @Query("z") authUser: String,
+        @Query("y") apiKey: String,
+        @Query("u") targetUser: String,
+        @Query("c") count: Int = 100,
+        @Query("o") offset: Int = 0
+    ): WantToPlayPage
 
     /**
      * Fetches a game's details and the user's progress on it.
