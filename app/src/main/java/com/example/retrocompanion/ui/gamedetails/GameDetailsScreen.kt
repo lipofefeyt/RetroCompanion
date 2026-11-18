@@ -260,11 +260,8 @@ fun GameDetailsScreen(
                         } else {
                             items(items = filteredList, key = { it.id }) { achievement ->
                                 val rarity = game.rarityPercent(achievement)
-                                val shareContent = if (achievement.isEarned && ShareCardContent.isRare(rarity)) {
-                                    ShareCardContent.forAchievement(game, achievement)
-                                } else {
-                                    null
-                                }
+                                // Any earned achievement can be shared; forAchievement() is null otherwise.
+                                val shareContent = ShareCardContent.forAchievement(game, achievement)
                                 AchievementRow(
                                     achievement,
                                     rarityPercent = rarity,

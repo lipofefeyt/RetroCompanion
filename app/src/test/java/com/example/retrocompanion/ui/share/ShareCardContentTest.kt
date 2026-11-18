@@ -70,6 +70,18 @@ class ShareCardContentTest {
     }
 
     @Test
+    fun `a common or unknown-rarity achievement still gets a card, but not the rare label`() {
+        val common = achievement(1, earned = "2026-03-03 14:22:10", numAwarded = 500)
+        val commonCard = ShareCardContent.forAchievement(game(common), common, locale)!!
+        assertEquals(ShareCardKind.ACHIEVEMENT, commonCard.kind)
+        assertEquals("10 pts · 50.0% of players · Unlocked Mar 3, 2026", commonCard.stats)
+
+        val unknown = achievement(2, earned = "2026-03-03 14:22:10")
+        val unknownCard = ShareCardContent.forAchievement(game(unknown, players = 0), unknown, locale)!!
+        assertEquals(ShareCardKind.ACHIEVEMENT, unknownCard.kind)
+    }
+
+    @Test
     fun `an achievement that is not earned has no card`() {
         val locked = achievement(1)
         assertNull(ShareCardContent.forAchievement(game(locked), locked, locale))

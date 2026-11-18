@@ -13,7 +13,11 @@ enum class ShareCardKind(val label: String, val placeholderGlyph: String) {
     /** Every achievement earned, but not all in hardcore mode. */
     COMPLETION("COMPLETED", "🎮"),
 
-    RARE_ACHIEVEMENT("RARE ACHIEVEMENT", "🏆")
+    /** Under [ShareCardContent.RARE_THRESHOLD_PERCENT] of players have earned it. */
+    RARE_ACHIEVEMENT("RARE ACHIEVEMENT", "🏆"),
+
+    /** Any other earned achievement. */
+    ACHIEVEMENT("ACHIEVEMENT UNLOCKED", "🏆")
 }
 
 /**
@@ -59,15 +63,16 @@ data class ShareCardContent(
                 if (hardcore) achievement.dateEarnedHardcore else achievement.dateEarned,
                 locale
             )
+            val rarity = game.rarityPercent(achievement)
             val stats = buildList {
                 add("${achievement.points} pts")
-                game.rarityPercent(achievement)?.let {
+                rarity?.let {
                     add(String.format(locale, "%.1f%% of players", it))
                 }
                 if (date != null) add(if (hardcore) "Hardcore $date" else "Unlocked $date")
             }.joinToString(" · ")
             return ShareCardContent(
-                kind = ShareCardKind.RARE_ACHIEVEMENT,
+                kind = if (isRare(rarity)) ShareCardKind.RARE_ACHIEVEMENT else ShareCardKind.ACHIEVEMENT,
                 title = achievement.title,
                 subtitle = listOfNotNull(game.title.takeIf { it.isNotBlank() }, game.consoleName?.takeIf { it.isNotBlank() })
                     .joinToString(" · ")
