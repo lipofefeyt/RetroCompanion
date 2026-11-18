@@ -139,12 +139,13 @@ data class UnlockActivity(
 }
 
 /**
- * Splits the activity window into fixed 30-day chunks (aligned to the Unix epoch, in UTC) so
+ * Splits the activity window into fixed 90-day chunks (aligned to the Unix epoch, in UTC) so
  * each can be cached on its own: a chunk that has fully ended can be cached for good and never
  * refetched, and only the current chunk is requested on each refresh.
  */
 object UnlockChunks {
-    const val CHUNK_DAYS = 30L
+    /** Large chunks keep the request count low (3-4 for the window); RetroAchievements rate-limits. */
+    const val CHUNK_DAYS = 90L
 
     /**
      * Unlocks can reach the server after the fact (e.g. synced from an offline session), so a

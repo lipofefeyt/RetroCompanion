@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -137,10 +138,19 @@ fun MainScreen(
                                     Screen.Stats -> "📊"
                                     Screen.Profile -> "👤"
                                     else -> "⚙️"
-                                }
+                                },
+                                fontSize = 20.sp
                             )
                         },
-                        label = { Text(screen.title) }
+                        // Six tabs share the bar, so keep each label small and on one line.
+                        label = {
+                            Text(
+                                text = screen.title,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
                     )
                 }
             }

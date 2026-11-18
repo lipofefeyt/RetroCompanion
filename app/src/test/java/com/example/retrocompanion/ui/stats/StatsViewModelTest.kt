@@ -142,7 +142,7 @@ class StatsViewModelTest {
             val cache = emptyCache()
             activityChunks.forEach { chunk ->
                 cache.write(
-                    CacheKeys.unlockChunk(sampleCredentials.username, chunk.index),
+                    CacheKeys.unlockChunk(sampleCredentials.username, UnlockChunks.CHUNK_DAYS, chunk.index),
                     listOf(UnlockStamp(achievementId = chunk.index.toInt(), date = "2026-03-10 08:00:00"))
                 )
             }
@@ -163,7 +163,7 @@ class StatsViewModelTest {
             val cache = emptyCache()
             activityChunks.forEach { chunk ->
                 cache.write(
-                    CacheKeys.unlockChunk(sampleCredentials.username, chunk.index),
+                    CacheKeys.unlockChunk(sampleCredentials.username, UnlockChunks.CHUNK_DAYS, chunk.index),
                     listOf(UnlockStamp(achievementId = chunk.index.toInt(), date = "2026-03-10 08:00:00")),
                     nowMillis = 1_000L
                 )
@@ -188,5 +188,59 @@ class StatsViewModelTest {
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.activity is SectionState.Error)
+        }
+
+    @Test
+    fun `activity retries a rate-limited chunk and then succeeds`() = runTest(mainDispatcherRule.dispatcher) {
+        var calls = 0
+        val api = FakeRetroAchievementsApi(earnedBetweenResult = { _, _ ->
+            calls++
+            if (calls == 1) throw httpException(429)
+            listOf(RecentUnlock(date = "2026-03-11 08:00:00", achievementId = 1))
+        })
+        val viewModel = activityViewModel(api, emptyCache())
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value.activity as SectionState.Success
+        assertEquals(1, state.data.totalUnlocks)
+        // One extra request for the retry on top of one per chunk.
+        assertEquals(activityChunks.size + 1, calls)
+    }
+
+    @Test
+    fun `activity gives up after repeated rate limiting but keeps the chunks it already fetched`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val cache = emptyCache()
+            val api = FakeRetroAchievementsApi(earnedBetweenResult = { from, _ ->
+                if (from >= activityChunks.last().fromEpochSeconds) throw httpException(429)
+                emptyList()
+            })
+            val viewModel = activityViewModel(api, cache)
+
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.activity is SectionState.Error)
+            // The earlier chunks were cached, so the next refresh only needs the missing one.
+            val firstKey = CacheKeys.unlockChunk(sampleCredentials.username, UnlockChunks.CHUNK_DAYS, activityChunks.first().index)
+            assertTrue(cache.read<List<UnlockStamp>>(firstKey, object : com.google.gson.reflect.TypeToken<List<UnlockStamp>>() {}.type) != null)
+        }
+
+    @Test
+    fun `activity waits for profile and library to load before requesting chunks`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val order = mutableListOf<String>()
+            val api = FakeRetroAchievementsApi(
+                userSummaryResult = { order += "summary"; UserProfileSummary() },
+                completionProgressResult = { _, _ -> order += "library"; UserCompletionProgressPage() },
+                earnedBetweenResult = { _, _ -> order += "chunk"; emptyList() }
+            )
+            activityViewModel(api, emptyCache())
+
+            advanceUntilIdle()
+
+            val firstChunk = order.indexOf("chunk")
+            assertTrue(firstChunk > order.indexOf("summary"))
+            assertTrue(firstChunk > order.indexOf("library"))
         }
 }

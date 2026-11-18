@@ -11,6 +11,12 @@ import com.example.retrocompanion.data.model.WantToPlayGame
 import com.example.retrocompanion.data.remote.RetroAchievementsApi
 import com.example.retrocompanion.data.remote.RetroApiException
 import com.example.retrocompanion.data.remote.RetrofitClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -21,13 +27,15 @@ class RetroAchievementsRepository(
     /** Fetches the user profile summary (points, rank, avatar, motto). */
     suspend fun getUserSummary(
         credentials: UserCredentials
-    ): Result<UserProfileSummary> = safeApiCall {
-        require(credentials.isValid) { "User credentials are invalid or missing." }
-        api.getUserSummary(
-            authUser = credentials.username,
-            apiKey = credentials.apiKey,
-            targetUser = credentials.username
-        )
+    ): Result<UserProfileSummary> = coalesced("summary:${credentials.hashCode()}") {
+        safeApiCall {
+            require(credentials.isValid) { "User credentials are invalid or missing." }
+            api.getUserSummary(
+                authUser = credentials.username,
+                apiKey = credentials.apiKey,
+                targetUser = credentials.username
+            )
+        }
     }
 
     /**
@@ -38,14 +46,16 @@ class RetroAchievementsRepository(
     suspend fun getRecentlyPlayed(
         credentials: UserCredentials,
         count: Int = 10
-    ): Result<List<RecentlyPlayedGame>> = safeApiCall {
-        require(credentials.isValid) { "User credentials are invalid or missing." }
-        api.getRecentlyPlayedGames(
-            authUser = credentials.username,
-            apiKey = credentials.apiKey,
-            targetUser = credentials.username,
-            count = count.coerceIn(1, MAX_RECENTLY_PLAYED_COUNT)
-        )
+    ): Result<List<RecentlyPlayedGame>> = coalesced("recentlyPlayed:${credentials.hashCode()}:$count") {
+        safeApiCall {
+            require(credentials.isValid) { "User credentials are invalid or missing." }
+            api.getRecentlyPlayedGames(
+                authUser = credentials.username,
+                apiKey = credentials.apiKey,
+                targetUser = credentials.username,
+                count = count.coerceIn(1, MAX_RECENTLY_PLAYED_COUNT)
+            )
+        }
     }
 
     /**
@@ -56,18 +66,20 @@ class RetroAchievementsRepository(
     suspend fun getRecentUnlocks(
         credentials: UserCredentials,
         lookbackMinutes: Int = SEVEN_DAYS_IN_MINUTES
-    ): Result<List<RecentUnlock>> = safeApiCall {
-        require(credentials.isValid) { "User credentials are invalid or missing." }
-        val unlocks = api.getRecentAchievements(
-            authUser = credentials.username,
-            apiKey = credentials.apiKey,
-            targetUser = credentials.username,
-            minutes = lookbackMinutes
-        )
-        // The API's ordering isn't documented/guaranteed; sort newest first ourselves.
-        // "Date" is "yyyy-MM-dd HH:mm:ss", so a plain string sort is also a correct
-        // chronological sort. Unlocks with no date (shouldn't happen) sort last.
-        unlocks.sortedByDescending { it.date.orEmpty() }
+    ): Result<List<RecentUnlock>> = coalesced("recentUnlocks:${credentials.hashCode()}:$lookbackMinutes") {
+        safeApiCall {
+            require(credentials.isValid) { "User credentials are invalid or missing." }
+            val unlocks = api.getRecentAchievements(
+                authUser = credentials.username,
+                apiKey = credentials.apiKey,
+                targetUser = credentials.username,
+                minutes = lookbackMinutes
+            )
+            // The API's ordering isn't documented/guaranteed; sort newest first ourselves.
+            // "Date" is "yyyy-MM-dd HH:mm:ss", so a plain string sort is also a correct
+            // chronological sort. Unlocks with no date (shouldn't happen) sort last.
+            unlocks.sortedByDescending { it.date.orEmpty() }
+        }
     }
 
     /**
@@ -112,23 +124,25 @@ class RetroAchievementsRepository(
      */
     suspend fun getAllGamesProgress(
         credentials: UserCredentials
-    ): Result<List<GameProgressSummary>> = safeApiCall {
-        require(credentials.isValid) { "User credentials are invalid or missing." }
-        val accumulated = mutableListOf<GameProgressSummary>()
-        var offset = 0
-        repeat(MAX_LIBRARY_PAGES) {
-            val page = api.getUserCompletionProgress(
-                authUser = credentials.username,
-                apiKey = credentials.apiKey,
-                targetUser = credentials.username,
-                count = LIBRARY_PAGE_SIZE,
-                offset = offset
-            )
-            accumulated += page.results
-            if (page.results.isEmpty() || accumulated.size >= page.total) return@safeApiCall accumulated
-            offset += page.results.size
+    ): Result<List<GameProgressSummary>> = coalesced("library:${credentials.hashCode()}") {
+        safeApiCall {
+            require(credentials.isValid) { "User credentials are invalid or missing." }
+            val accumulated = mutableListOf<GameProgressSummary>()
+            var offset = 0
+            repeat(MAX_LIBRARY_PAGES) {
+                val page = api.getUserCompletionProgress(
+                    authUser = credentials.username,
+                    apiKey = credentials.apiKey,
+                    targetUser = credentials.username,
+                    count = LIBRARY_PAGE_SIZE,
+                    offset = offset
+                )
+                accumulated += page.results
+                if (page.results.isEmpty() || accumulated.size >= page.total) return@safeApiCall accumulated
+                offset += page.results.size
+            }
+            accumulated
         }
-        accumulated
     }
 
     /**
@@ -158,6 +172,30 @@ class RetroAchievementsRepository(
     }
 
     /**
+     * Several screens load the same data when the app starts, each through its own repository.
+     * While one identical request (same call, same credentials, same arguments) is still in
+     * flight, later callers wait for its result instead of sending another: RetroAchievements
+     * rate-limits, and duplicates were enough to trip it. Once a request finishes, the next
+     * call makes a fresh one, so refreshes always hit the network.
+     */
+    private suspend fun <T> coalesced(key: String, call: suspend () -> Result<T>): Result<T> {
+        val fullKey = "${System.identityHashCode(api)}:$key"
+        @Suppress("UNCHECKED_CAST")
+        val shared = synchronized(inFlight) {
+            inFlight.getOrPut(fullKey) {
+                // Lazy, so the completion handler is registered before the call can finish.
+                val deferred = sharedScope.async(start = CoroutineStart.LAZY) { call() }
+                deferred.invokeOnCompletion {
+                    synchronized(inFlight) { if (inFlight[fullKey] === deferred) inFlight.remove(fullKey) }
+                }
+                deferred
+            }
+        } as Deferred<Result<T>>
+        shared.start()
+        return shared.await()
+    }
+
+    /**
      * Runs [block], translating network/HTTP failures into the distinct [RetroApiException]
      * subtypes so callers can tell a rejected key, rate limiting, no network, and an unexpected
      * response apart.
@@ -175,6 +213,10 @@ class RetroAchievementsRepository(
     }
 
     companion object {
+        /** Runs shared requests so one caller going away doesn't cancel it for the others. */
+        private val sharedScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        private val inFlight = HashMap<String, Deferred<*>>()
+
         private const val SEVEN_DAYS_IN_MINUTES = 10080
         private const val MAX_RECENTLY_PLAYED_COUNT = 50
         private const val LIBRARY_PAGE_SIZE = 500

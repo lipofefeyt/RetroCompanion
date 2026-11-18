@@ -17,12 +17,15 @@ import com.example.retrocompanion.data.repository.RetroAchievementsRepository
 import com.example.retrocompanion.ui.common.CredentialsStatus
 import com.example.retrocompanion.ui.common.SectionState
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 import java.util.TimeZone
@@ -76,7 +79,9 @@ class StatsViewModel @JvmOverloads constructor(
     private suspend fun loadAllSections(credentials: UserCredentials) = coroutineScope {
         val profileJob = launch { loadProfile(credentials) }
         val libraryJob = launch { loadLibraryStats(credentials) }
-        val activityJob = launch { loadActivity(credentials) }
+        // The heatmap needs several requests, so it waits for the lighter sections to finish
+        // first instead of piling onto them (it still shows cached data straight away).
+        val activityJob = launch { loadActivity(credentials, waitFor = listOf(profileJob, libraryJob)) }
         profileJob.join()
         libraryJob.join()
         activityJob.join()
@@ -152,12 +157,12 @@ class StatsViewModel @JvmOverloads constructor(
      * their cached copy offline. If any chunk is unavailable the section errors rather than
      * showing a heatmap with a silent gap (which would also corrupt the streaks).
      */
-    private suspend fun loadActivity(credentials: UserCredentials) {
+    private suspend fun loadActivity(credentials: UserCredentials, waitFor: List<Job> = emptyList()) {
         val now = nowMillis()
         val chunks = UnlockChunks.forWindow(now, UnlockActivity.DEFAULT_WINDOW_DAYS)
         val cachedByIndex = chunks.associate { chunk ->
             chunk.index to responseCache.read<List<UnlockStamp>>(
-                CacheKeys.unlockChunk(credentials.username, chunk.index),
+                CacheKeys.unlockChunk(credentials.username, UnlockChunks.CHUNK_DAYS, chunk.index),
                 stampListType
             )
         }
@@ -177,19 +182,23 @@ class StatsViewModel @JvmOverloads constructor(
             _uiState.update { it.copy(activity = SectionState.Loading) }
         }
 
+        waitFor.joinAll()
+
         val stamps = ArrayList<UnlockStamp>()
         var staleSince: Long? = null
         var failure: Throwable? = null
+        var requestsMade = 0
         for (chunk in chunks) {
             val cached = cachedByIndex[chunk.index]
             if (cached != null && chunk.isSettled(now)) {
                 stamps += cached.data
                 continue
             }
-            val result = repository.getUnlocksBetween(credentials, chunk.fromEpochSeconds, chunk.toEpochSeconds)
+            if (requestsMade++ > 0) delay(CHUNK_REQUEST_SPACING_MS)
+            val result = fetchChunk(credentials, chunk)
             if (result.isSuccess) {
                 val fetched = result.getOrThrow()
-                responseCache.write(CacheKeys.unlockChunk(credentials.username, chunk.index), fetched)
+                responseCache.write(CacheKeys.unlockChunk(credentials.username, UnlockChunks.CHUNK_DAYS, chunk.index), fetched)
                 stamps += fetched
             } else if (cached != null) {
                 stamps += cached.data
@@ -215,7 +224,27 @@ class StatsViewModel @JvmOverloads constructor(
         _uiState.update { it.copy(activity = newState) }
     }
 
+    /**
+     * Fetches one chunk, waiting and trying again a couple of times if RetroAchievements says
+     * we're going too fast. Chunks fetched before a failure stay cached, so a later refresh
+     * resumes where this one stopped.
+     */
+    private suspend fun fetchChunk(credentials: UserCredentials, chunk: UnlockChunks.Chunk): Result<List<UnlockStamp>> {
+        var attempt = 0
+        while (true) {
+            val result = repository.getUnlocksBetween(credentials, chunk.fromEpochSeconds, chunk.toEpochSeconds)
+            val rateLimited = result.exceptionOrNull() is RetroApiException.RateLimited
+            if (!rateLimited || attempt >= MAX_RATE_LIMIT_RETRIES) return result
+            attempt++
+            delay(RATE_LIMIT_BACKOFF_MS * attempt)
+        }
+    }
+
     private companion object {
+        const val CHUNK_REQUEST_SPACING_MS = 400L
+        const val RATE_LIMIT_BACKOFF_MS = 3_000L
+        const val MAX_RATE_LIMIT_RETRIES = 2
+
         val libraryListType: Type = object : TypeToken<List<GameProgressSummary>>() {}.type
         val stampListType: Type = object : TypeToken<List<UnlockStamp>>() {}.type
     }

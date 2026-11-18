@@ -12,7 +12,9 @@ object CacheKeys {
     fun recentUnlocks(username: String) = "$username:recent_unlocks"
     fun gameInfo(username: String, gameId: Int) = "$username:game_info:$gameId"
     fun gameLibrary(username: String) = "$username:game_library"
-    fun unlockChunk(username: String, chunkIndex: Long) = "$username:unlock_chunk:$chunkIndex"
+    /** [chunkDays] is part of the key because an index only means something for one chunk size. */
+    fun unlockChunk(username: String, chunkDays: Long, chunkIndex: Long) =
+        "$username:unlock_chunk:${chunkDays}d:$chunkIndex"
 }
 
 /**

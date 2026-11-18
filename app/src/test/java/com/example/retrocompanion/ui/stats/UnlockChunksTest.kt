@@ -14,7 +14,8 @@ class UnlockChunksTest {
     fun `chunks are contiguous, oldest first, and never extend past now`() {
         val chunks = UnlockChunks.forWindow(now, UnlockActivity.DEFAULT_WINDOW_DAYS)
 
-        assertTrue(chunks.size >= 6)
+        // 90-day chunks: a 26-week window is covered by only a few requests.
+        assertTrue(chunks.size in 3..4)
         chunks.zipWithNext().forEach { (a, b) ->
             assertEquals(a.index + 1, b.index)
             assertEquals(a.toEpochSeconds + 1, b.fromEpochSeconds)
