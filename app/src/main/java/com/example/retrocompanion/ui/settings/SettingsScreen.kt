@@ -182,6 +182,8 @@ fun SettingsScreen(
                     onEnabledChange = { viewModel.setUnlockNotificationsEnabled(it) }
                 )
 
+                DebugToolsSection()
+
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Local Storage Security Notice & Instructions Card
