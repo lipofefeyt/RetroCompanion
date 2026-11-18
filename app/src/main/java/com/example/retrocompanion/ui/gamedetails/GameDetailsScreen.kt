@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star as OutlinedStar
 import androidx.compose.material3.Card
@@ -43,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.retrocompanion.data.model.GameAchievement
 import com.example.retrocompanion.ui.components.WishlistIcons
+import com.example.retrocompanion.ui.share.ShareCardContent
+import com.example.retrocompanion.ui.share.rememberShareCardAction
 import com.example.retrocompanion.ui.components.EmptySectionCard
 import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.NetworkImage
@@ -59,6 +62,7 @@ fun GameDetailsScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val shareCard = rememberShareCardAction()
 
     Scaffold(
         topBar = {
@@ -78,6 +82,14 @@ fun GameDetailsScreen(
                 actions = {
                     val successState = uiState as? GameDetailsUiState.Success
                     if (successState != null) {
+                        ShareCardContent.forCompletion(successState.gameInfo)?.let { card ->
+                            IconButton(onClick = { shareCard(card) }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Share,
+                                    contentDescription = "Share completion card"
+                                )
+                            }
+                        }
                         IconButton(onClick = { viewModel.toggleWishlist() }) {
                             Icon(
                                 imageVector = if (successState.isWishlisted) WishlistIcons.Bookmark else WishlistIcons.BookmarkBorder,
@@ -247,7 +259,17 @@ fun GameDetailsScreen(
                             }
                         } else {
                             items(items = filteredList, key = { it.id }) { achievement ->
-                                AchievementRow(achievement, rarityPercent = game.rarityPercent(achievement))
+                                val rarity = game.rarityPercent(achievement)
+                                val shareContent = if (achievement.isEarned && ShareCardContent.isRare(rarity)) {
+                                    ShareCardContent.forAchievement(game, achievement)
+                                } else {
+                                    null
+                                }
+                                AchievementRow(
+                                    achievement,
+                                    rarityPercent = rarity,
+                                    onShare = shareContent?.let { card -> { shareCard(card) } }
+                                )
                             }
                         }
                     }
@@ -261,7 +283,8 @@ fun GameDetailsScreen(
 private fun AchievementRow(
     achievement: GameAchievement,
     rarityPercent: Float?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onShare: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier
@@ -327,6 +350,15 @@ private fun AchievementRow(
                         MaterialTheme.colorScheme.outline
                     }
                 )
+            }
+            if (onShare != null) {
+                IconButton(onClick = onShare) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Share ${achievement.title}",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
