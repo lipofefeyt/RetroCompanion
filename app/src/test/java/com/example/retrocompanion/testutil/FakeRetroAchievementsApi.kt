@@ -31,6 +31,12 @@ class FakeRetroAchievementsApi(
     var earnedBetweenResult: suspend (from: Long, to: Long) -> List<RecentUnlock> = { _, _ -> emptyList() }
 ) : RetroAchievementsApi {
 
+    /** The lookback (m) of the most recent getRecentAchievements call, for asserting on it. */
+    var lastRecentMinutes: Int? = null
+        private set
+    var recentCallCount: Int = 0
+        private set
+
     override suspend fun getUserSummary(
         authUser: String,
         apiKey: String,
@@ -51,7 +57,11 @@ class FakeRetroAchievementsApi(
         apiKey: String,
         targetUser: String,
         minutes: Int
-    ): List<RecentUnlock> = recentAchievementsResult()
+    ): List<RecentUnlock> {
+        lastRecentMinutes = minutes
+        recentCallCount++
+        return recentAchievementsResult()
+    }
 
     override suspend fun getGameInfoAndUserProgress(
         authUser: String,
