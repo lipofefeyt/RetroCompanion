@@ -27,6 +27,23 @@ is recoverable through Play Console support, but it is slow and painful.
 This is the *upload* key. Enroll in **Play App Signing** in the Play Console: Google holds the real
 app-signing key and re-signs what you upload, so a lost upload key can be reset.
 
+## Each release
+
+1. **Bump the version** in `app/build.gradle.kts` (`defaultConfig`): `versionCode` must increase on
+   every upload to Play (it is an integer, never reused); `versionName` is the human-readable one
+   shown to users (e.g. `1.0`, `1.1`).
+2. Make sure `master` is green in CI and `./gradlew testDebugUnitTest lintDebug lintRelease` pass.
+3. `./gradlew bundleRelease` (with `keystore.properties` present) produces the signed
+   **`app/build/outputs/bundle/release/app-release.aab`**. That is what you upload to Play.
+   For a sideloadable APK use `./gradlew assembleRelease` (`app/build/outputs/apk/release/`).
+4. Test the minified build on a device (checklist below).
+5. Upload the AAB to a Play testing track (internal first). Play uses the R8 mapping file inside
+   the bundle to de-obfuscate crash reports.
+6. Tag the release (`git tag v1.0 && git push origin v1.0`) so the code for each upload can be found.
+
+CI builds an **unsigned** release bundle and runs release lint on every push, so R8 and
+release-only problems are caught before this step.
+
 ## Minification (R8)
 
 Release builds run R8, but `optimization.packageScope` in `app/build.gradle.kts` limits it to

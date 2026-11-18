@@ -35,6 +35,11 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --console=plain
 
+      # Unsigned (CI has no keystore). Runs R8 and release lint so a minification or release-only
+      # problem fails the build here instead of at upload time.
+      - name: Build release bundle and lint release
+        run: ./gradlew bundleRelease lintRelease --console=plain
+
       - name: Upload unit test report
         if: always()
         uses: actions/upload-artifact@v4
