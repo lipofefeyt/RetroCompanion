@@ -4,6 +4,15 @@ How RetroCompanion is built and signed for release. Nothing in this file is secr
 secret should ever be added to the repo: **never commit a keystore, `keystore.properties`, or any
 password.**
 
+## Application ID
+
+The app is published as **`io.github.lipofefeyt.retrocompanion`** (`applicationId` in
+`app/build.gradle.kts`). This is permanent once the app is on Play. The source `namespace` stays
+`com.example.retrocompanion` on purpose: it only names the code's package and R class, and moving
+it would touch every file for no benefit. Because the ID changed from the original
+`com.example.retrocompanion`, a device that has the old debug build gets this as a **separate app**
+with its own empty data (re-enter your credentials), and the old one can be uninstalled.
+
 ## One-time: create the upload keystore
 
 Do this yourself, in your own terminal, so the passwords are typed only by you. Keep the keystore

@@ -26,7 +26,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.retrocompanion"
+        // The permanent app ID Play identifies the app by (it can't change once published). The
+        // source namespace above is separate and deliberately stays com.example.retrocompanion.
+        applicationId = "io.github.lipofefeyt.retrocompanion"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
