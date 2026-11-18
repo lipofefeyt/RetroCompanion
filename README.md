@@ -1,7 +1,22 @@
 # RetroCompanion
 
 An Android companion app for [RetroAchievements](https://retroachievements.org) that shows your
-recently played games, achievement progress, and recent unlocks.
+recently played games, achievement progress, and recent unlocks, and adds a wishlist, streak
+tracking, share cards and unlock notifications.
+
+## Features
+
+- **Home** — recently played games with progress and the last 7 days of unlocks.
+- **Search** — one search over your whole library and recently unlocked achievements.
+- **Library** — every game with completion progress, favorites (star) and a local **wishlist**
+  (bookmark) you can filter to and seed from your RetroAchievements Want to Play list.
+- **Stats** — totals, per-console averages, games closest to mastery, daily unlock streaks and a
+  26-week heatmap.
+- **Game Details** — full achievement list with rarity, filters and sorting; share a completed game
+  or a rare achievement as an image card.
+- **Unlock notifications** — optional, off by default; checks about every 15 minutes in the
+  background and notifies on new unlocks.
+- **Profile**, **Settings** (credentials, theme), offline caching with stale-data banners.
 
 ## Prerequisites
 
@@ -27,6 +42,9 @@ From the command line:
 ```sh
 ./gradlew assembleDebug        # build the debug APK
 ./gradlew testDebugUnitTest    # run unit tests (JVM, no device needed)
+./gradlew lintDebug            # Android Lint (also run in CI)
+./gradlew installDebug         # install on a connected device or emulator
+./gradlew connectedDebugAndroidTest   # instrumentation tests (needs a device or emulator)
 ```
 
 **WSL note:** if the Android SDK lives on the Windows side (e.g. installed via Android Studio on
@@ -50,8 +68,16 @@ RetroAchievements username and Web API key and tap **Save**. The app then shows 
 - Recently played games and achievement progress.
 - Achievements unlocked in the last 7 days.
 
-The bottom navigation provides access to **Home**, your full **Library** (with title search and
-progress tracking), and **Settings** (with a **Clear** action to remove stored credentials).
+The bottom navigation provides access to **Home**, **Search**, **Library**, **Stats**,
+**Profile** and **Settings**. Settings has a **Clear** action that removes stored credentials and,
+with them, your favorites, wishlist, notification opt-in and cached data.
+
+### Unlock notifications
+
+Turn on **Unlock notifications** in Settings. On Android 13+ the app explains why and asks for the
+notification permission; if you deny it (or notifications are off in system settings) the switch
+stays off and a button opens the app's notification settings. Android may delay the background
+check well beyond 15 minutes when battery saver or Doze is active.
 
 ## Project layout
 
