@@ -84,6 +84,17 @@ class DataStoreWishlistRepositoryTest {
     }
 
     @Test
+    fun `clear removes every wishlisted game`() = runTest {
+        val repository = repo()
+        repository.toggle(first)
+        repository.toggle(second)
+
+        repository.clear()
+
+        assertTrue(repository.wishlistFlow.first().isEmpty())
+    }
+
+    @Test
     fun `corrupt or blank stored data decodes to an empty list`() {
         assertTrue(decodeWishlist(null).isEmpty())
         assertTrue(decodeWishlist("").isEmpty())

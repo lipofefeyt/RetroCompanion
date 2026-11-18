@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.retrocompanion.data.local.DataStoreCacheDao
 import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.local.UserCredentialsSource
+import com.example.retrocompanion.data.local.DataStoreWishlistRepository
 import com.example.retrocompanion.data.local.UserPreferencesRepository
+import com.example.retrocompanion.data.local.WishlistSource
 import com.example.retrocompanion.data.model.ThemeMode
 import com.example.retrocompanion.data.polling.PollingScheduler
 import com.example.retrocompanion.data.polling.WorkManagerPollingScheduler
@@ -30,7 +32,8 @@ class SettingsViewModel @JvmOverloads constructor(
     application: Application,
     private val userPreferencesRepository: UserCredentialsSource = UserPreferencesRepository(application),
     private val responseCache: ResponseCache = ResponseCache(DataStoreCacheDao(application)),
-    private val pollingScheduler: PollingScheduler = WorkManagerPollingScheduler(application)
+    private val pollingScheduler: PollingScheduler = WorkManagerPollingScheduler(application),
+    private val wishlistSource: WishlistSource = DataStoreWishlistRepository(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -107,6 +110,8 @@ class SettingsViewModel @JvmOverloads constructor(
             userPreferencesRepository.clearCredentials()
             // Polling is pointless without credentials; clearing also resets the opt-in.
             pollingScheduler.disable()
+            // Favorites are cleared with the credentials; the wishlist belongs to the account too.
+            wishlistSource.clear()
             if (usernameToClear.isNotBlank()) {
                 responseCache.clearForUser(usernameToClear)
             }

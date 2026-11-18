@@ -5,11 +5,14 @@ import com.example.retrocompanion.data.local.CacheKeys
 import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.model.ThemeMode
 import com.example.retrocompanion.data.model.UserCredentials
+import com.example.retrocompanion.data.model.WishlistEntry
 import com.example.retrocompanion.data.polling.PollingScheduler
 import com.example.retrocompanion.testutil.FakeCacheDao
 import com.example.retrocompanion.testutil.FakeUserCredentialsSource
+import com.example.retrocompanion.testutil.FakeWishlistSource
 import com.example.retrocompanion.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -37,7 +40,7 @@ class SettingsViewModelTest {
     @Test
     fun `init loads existing stored credentials into the input fields`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource(UserCredentials(username = "sample_user", apiKey = "sample-fake-key"))
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler())
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler(), FakeWishlistSource())
 
         advanceUntilIdle()
 
@@ -50,7 +53,7 @@ class SettingsViewModelTest {
     @Test
     fun `changing username or api key resets isSavedSuccess`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource()
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler())
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler(), FakeWishlistSource())
         advanceUntilIdle()
 
         viewModel.onUsernameChanged("sample_user")
@@ -68,7 +71,7 @@ class SettingsViewModelTest {
     @Test
     fun `saveCredentials writes current inputs to the source and sets isSavedSuccess`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource()
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler())
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler(), FakeWishlistSource())
         advanceUntilIdle()
 
         viewModel.onUsernameChanged("sample_user")
@@ -84,7 +87,7 @@ class SettingsViewModelTest {
     @Test
     fun `clearCredentials clears the source and resets state`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource(UserCredentials(username = "sample_user", apiKey = "sample-fake-key"))
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler())
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler(), FakeWishlistSource())
         advanceUntilIdle()
 
         viewModel.clearCredentials()
@@ -103,7 +106,7 @@ class SettingsViewModelTest {
         val cache = ResponseCache(cacheDao)
         cache.write(CacheKeys.recentlyPlayed("sample_user"), emptyList<Any>())
         val source = FakeUserCredentialsSource(UserCredentials(username = "sample_user", apiKey = "sample-fake-key"))
-        val viewModel = SettingsViewModel(Application(), source, cache, FakePollingScheduler())
+        val viewModel = SettingsViewModel(Application(), source, cache, FakePollingScheduler(), FakeWishlistSource())
         advanceUntilIdle()
 
         viewModel.clearCredentials()
@@ -115,7 +118,7 @@ class SettingsViewModelTest {
     @Test
     fun `dismissSavedMessage resets isSavedSuccess`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource()
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler())
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler(), FakeWishlistSource())
         advanceUntilIdle()
         viewModel.onUsernameChanged("sample_user")
         viewModel.onApiKeyChanged("sample-fake-key")
@@ -131,7 +134,7 @@ class SettingsViewModelTest {
     @Test
     fun `theme mode loads from the source and setThemeMode writes through it`() = runTest(mainDispatcherRule.dispatcher) {
         val source = FakeUserCredentialsSource(initialThemeMode = ThemeMode.DARK)
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler())
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler(), FakeWishlistSource())
         advanceUntilIdle()
 
         assertEquals(ThemeMode.DARK, viewModel.uiState.value.themeMode)
@@ -145,7 +148,7 @@ class SettingsViewModelTest {
     @Test
     fun `unlock notifications are off by default and the poller is not started`() = runTest(mainDispatcherRule.dispatcher) {
         val scheduler = FakePollingScheduler()
-        val viewModel = SettingsViewModel(Application(), FakeUserCredentialsSource(), emptyCache(), scheduler)
+        val viewModel = SettingsViewModel(Application(), FakeUserCredentialsSource(), emptyCache(), scheduler, FakeWishlistSource())
 
         advanceUntilIdle()
 
@@ -157,7 +160,7 @@ class SettingsViewModelTest {
     @Test
     fun `enabling unlock notifications saves the opt-in and schedules the poller`() = runTest(mainDispatcherRule.dispatcher) {
         val scheduler = FakePollingScheduler()
-        val viewModel = SettingsViewModel(Application(), FakeUserCredentialsSource(), emptyCache(), scheduler)
+        val viewModel = SettingsViewModel(Application(), FakeUserCredentialsSource(), emptyCache(), scheduler, FakeWishlistSource())
         advanceUntilIdle()
 
         viewModel.setUnlockNotificationsEnabled(true)
@@ -171,7 +174,7 @@ class SettingsViewModelTest {
     fun `disabling unlock notifications saves the opt-out and cancels the poller`() = runTest(mainDispatcherRule.dispatcher) {
         val scheduler = FakePollingScheduler()
         val source = FakeUserCredentialsSource(initialUnlockNotifications = true)
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), scheduler)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), scheduler, FakeWishlistSource())
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.unlockNotificationsEnabled)
 
@@ -190,7 +193,7 @@ class SettingsViewModelTest {
             UserCredentials(username = "sample_user", apiKey = "sample-fake-key"),
             initialUnlockNotifications = true
         )
-        val viewModel = SettingsViewModel(Application(), source, emptyCache(), scheduler)
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), scheduler, FakeWishlistSource())
         advanceUntilIdle()
 
         viewModel.clearCredentials()
@@ -198,5 +201,32 @@ class SettingsViewModelTest {
 
         assertFalse(viewModel.uiState.value.unlockNotificationsEnabled)
         assertEquals(1, scheduler.disableCount)
+    }
+
+    @Test
+    fun `clearing credentials also clears the wishlist`() = runTest(mainDispatcherRule.dispatcher) {
+        val wishlist = FakeWishlistSource(listOf(WishlistEntry(gameId = 1, title = "Sample Game")))
+        val source = FakeUserCredentialsSource(UserCredentials(username = "sample_user", apiKey = "sample-fake-key"))
+        val viewModel = SettingsViewModel(Application(), source, emptyCache(), FakePollingScheduler(), wishlist)
+        advanceUntilIdle()
+
+        viewModel.clearCredentials()
+        advanceUntilIdle()
+
+        assertTrue(wishlist.wishlistFlow.first().isEmpty())
+    }
+
+    @Test
+    fun `saving credentials leaves the wishlist alone`() = runTest(mainDispatcherRule.dispatcher) {
+        val wishlist = FakeWishlistSource(listOf(WishlistEntry(gameId = 1, title = "Sample Game")))
+        val viewModel = SettingsViewModel(Application(), FakeUserCredentialsSource(), emptyCache(), FakePollingScheduler(), wishlist)
+        advanceUntilIdle()
+
+        viewModel.onUsernameChanged("sample_user")
+        viewModel.onApiKeyChanged("sample-fake-key")
+        viewModel.saveCredentials()
+        advanceUntilIdle()
+
+        assertEquals(1, wishlist.wishlistFlow.first().size)
     }
 }

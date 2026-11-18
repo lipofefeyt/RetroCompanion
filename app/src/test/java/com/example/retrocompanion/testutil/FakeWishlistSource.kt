@@ -10,6 +10,10 @@ class FakeWishlistSource(initial: List<WishlistEntry> = emptyList()) : WishlistS
     private val state = MutableStateFlow(initial)
     override val wishlistFlow: Flow<List<WishlistEntry>> = state
 
+    override suspend fun clear() {
+        state.value = emptyList()
+    }
+
     override suspend fun addAll(entries: List<WishlistEntry>): Int {
         val (merged, added) = mergeWishlist(state.value, entries)
         state.value = merged

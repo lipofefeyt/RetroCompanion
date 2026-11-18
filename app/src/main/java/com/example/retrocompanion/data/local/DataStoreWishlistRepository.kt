@@ -61,6 +61,10 @@ class DataStoreWishlistRepository(
         }
     }
 
+    override suspend fun clear() {
+        dataStore.edit { preferences -> preferences.remove(wishlistKey) }
+    }
+
     override suspend fun addAll(entries: List<WishlistEntry>): Int {
         var added = 0
         dataStore.edit { preferences ->

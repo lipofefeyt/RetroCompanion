@@ -21,4 +21,7 @@ interface WishlistSource {
      * buries what the user added by hand.
      */
     suspend fun addAll(entries: List<WishlistEntry>): Int
+
+    /** Removes every wishlisted game. Used when the user clears their credentials. */
+    suspend fun clear()
 }
