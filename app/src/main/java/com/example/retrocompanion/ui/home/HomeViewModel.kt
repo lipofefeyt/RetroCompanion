@@ -8,6 +8,7 @@ import com.example.retrocompanion.data.local.DataStoreCacheDao
 import com.example.retrocompanion.data.local.ResponseCache
 import com.example.retrocompanion.data.local.UserCredentialsSource
 import com.example.retrocompanion.data.local.UserPreferencesRepository
+import com.example.retrocompanion.data.model.AchievementOfTheWeek
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCredentials
@@ -95,9 +96,11 @@ class HomeViewModel @JvmOverloads constructor(
         val profileJob = launch { loadUserProfile(credentials) }
         val gamesJob = launch { loadRecentlyPlayed(credentials) }
         val unlocksJob = launch { loadRecentUnlocks(credentials) }
+        val aotwJob = launch { loadAchievementOfTheWeek(credentials) }
         profileJob.join()
         gamesJob.join()
         unlocksJob.join()
+        aotwJob.join()
     }
 
     private suspend fun loadUserProfile(credentials: UserCredentials) {
@@ -115,6 +118,15 @@ class HomeViewModel @JvmOverloads constructor(
             cacheType = recentlyPlayedListType,
             fetch = { repository.getRecentlyPlayed(credentials, count = 10) },
             applyState = { state -> _uiState.update { it.copy(recentlyPlayed = state) } }
+        )
+    }
+
+    private suspend fun loadAchievementOfTheWeek(credentials: UserCredentials) {
+        loadSection(
+            cacheKey = CacheKeys.achievementOfTheWeek(credentials.username),
+            cacheType = AchievementOfTheWeek::class.java,
+            fetch = { repository.getAchievementOfTheWeek(credentials) },
+            applyState = { state -> _uiState.update { it.copy(achievementOfTheWeek = state) } }
         )
     }
 

@@ -1,5 +1,7 @@
 package com.example.retrocompanion.data.remote
 
+import com.example.retrocompanion.data.model.AchievementOfTheWeek
+import com.example.retrocompanion.data.model.AchievementOfTheWeekResponse
 import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
@@ -147,5 +149,67 @@ class SampleResponseParsingTest {
         assertEquals("Sample Quest Adventure", entry.title)
         assertEquals("Sample Console", entry.consoleName)
         assertEquals("https://media.retroachievements.org/Images/000001.png", entry.iconUrl)
+    }
+
+    private fun aotw(): AchievementOfTheWeekResponse =
+        gson.fromJson(readResource("sample_achievement_of_the_week.json"), AchievementOfTheWeekResponse::class.java)
+
+    @Test
+    fun `parses sample achievement of the week response into a compact summary`() {
+        val summary = aotw().toSummary("sample_user")!!
+
+        assertEquals(9001, summary.achievementId)
+        assertEquals("Sample Weekly Challenge", summary.title)
+        assertEquals("Defeat the sample boss without taking damage", summary.description)
+        assertEquals(25, summary.points)
+        assertEquals(4242, summary.gameId)
+        assertEquals("Sample Quest Adventure", summary.gameTitle)
+        assertEquals("Sample Console", summary.consoleName)
+        assertEquals("2026-03-09T00:00:00.000000Z", summary.startAt)
+        assertEquals(400, summary.totalPlayers)
+        assertEquals(100, summary.unlocksCount)
+        assertEquals(80, summary.unlocksHardcoreCount)
+        assertEquals("", summary.badgeUrl)
+    }
+
+    @Test
+    fun `achievement of the week notices the signed-in user in the unlock list, ignoring case`() {
+        assertEquals(true, aotw().toSummary("SAMPLE_USER")!!.unlockedByUser)
+        assertEquals(false, aotw().toSummary("someone_else")!!.unlockedByUser)
+        assertEquals(false, aotw().toSummary("")!!.unlockedByUser)
+    }
+
+    @Test
+    fun `achievement of the week without an unlock list or achievement is handled`() {
+        val noUnlocks = AchievementOfTheWeekResponse(
+            achievement = aotw().achievement,
+            game = aotw().game
+        )
+        assertEquals(false, noUnlocks.toSummary("sample_user")!!.unlockedByUser)
+        assertEquals(null, AchievementOfTheWeekResponse().toSummary("sample_user"))
+    }
+
+    @Test
+    fun `achievement of the week derived values guard against missing data`() {
+        val summary = aotw().toSummary("sample_user")!!
+
+        assertEquals(25f, summary.unlockedPercent!!, 0.001f)
+        assertEquals(null, summary.copy(totalPlayers = 0).unlockedPercent)
+        assertEquals("Mar 9, 2026", summary.featuredSinceLabel(java.util.Locale.US))
+        assertEquals(null, summary.copy(startAt = null).featuredSinceLabel(java.util.Locale.US))
+        assertEquals(null, summary.copy(startAt = "garbage").featuredSinceLabel(java.util.Locale.US))
+        assertEquals(
+            "https://media.retroachievements.org/Badge/12345.png",
+            summary.copy(badgeName = "12345").badgeUrl
+        )
+    }
+
+    @Test
+    fun `the compact summary no longer carries the unlock list`() {
+        val json = gson.toJson(aotw().toSummary("sample_user"))
+        assertEquals(false, json.contains("Other_Player"))
+        assertEquals(false, json.contains("Unlocks\""))
+        val roundTrip = gson.fromJson(json, AchievementOfTheWeek::class.java)
+        assertEquals(aotw().toSummary("sample_user"), roundTrip)
     }
 }

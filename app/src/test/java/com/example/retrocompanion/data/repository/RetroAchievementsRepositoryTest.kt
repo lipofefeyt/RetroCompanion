@@ -1,6 +1,10 @@
 package com.example.retrocompanion.data.repository
 
 import com.example.retrocompanion.data.model.GameProgressSummary
+import com.example.retrocompanion.data.model.AchievementOfTheWeekResponse
+import com.example.retrocompanion.data.model.AotwAchievement
+import com.example.retrocompanion.data.model.AotwNamed
+import com.example.retrocompanion.data.model.AotwUnlock
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.UnlockStamp
 import com.example.retrocompanion.data.model.UserCompletionProgressPage
@@ -204,5 +208,45 @@ class RetroAchievementsRepositoryTest {
 
         assertTrue(first.await().exceptionOrNull() is com.example.retrocompanion.data.remote.RetroApiException.RateLimited)
         assertTrue(second.await().exceptionOrNull() is com.example.retrocompanion.data.remote.RetroApiException.RateLimited)
+    }
+
+    private fun aotwResponse() = AchievementOfTheWeekResponse(
+        achievement = AotwAchievement(id = 9001, title = "Sample Weekly Challenge", points = 25),
+        game = AotwNamed(id = 4242, title = "Sample Quest Adventure"),
+        console = AotwNamed(id = 3, title = "Sample Console"),
+        totalPlayers = 400,
+        unlocksCount = 100,
+        unlocks = listOf(AotwUnlock(user = "Sample_User"), AotwUnlock(user = "other"))
+    )
+
+    @Test
+    fun `getAchievementOfTheWeek maps the response for the signed-in user`() = runTest {
+        val api = FakeRetroAchievementsApi(achievementOfTheWeekResult = { aotwResponse() })
+
+        val result = RetroAchievementsRepository(api).getAchievementOfTheWeek(sampleCredentials).getOrThrow()
+
+        assertEquals(9001, result.achievementId)
+        assertEquals(4242, result.gameId)
+        assertTrue(result.unlockedByUser)
+    }
+
+    @Test
+    fun `getAchievementOfTheWeek fails cleanly when the response has no achievement`() = runTest {
+        val api = FakeRetroAchievementsApi(achievementOfTheWeekResult = { AchievementOfTheWeekResponse() })
+
+        val failure = RetroAchievementsRepository(api).getAchievementOfTheWeek(sampleCredentials).exceptionOrNull()
+
+        assertTrue(failure is com.example.retrocompanion.data.remote.RetroApiException.UnexpectedError)
+    }
+
+    @Test
+    fun `getAchievementOfTheWeek reports API errors as typed failures`() = runTest {
+        val api = FakeRetroAchievementsApi(achievementOfTheWeekResult = {
+            throw com.example.retrocompanion.testutil.httpException(401)
+        })
+
+        val failure = RetroAchievementsRepository(api).getAchievementOfTheWeek(sampleCredentials).exceptionOrNull()
+
+        assertTrue(failure is com.example.retrocompanion.data.remote.RetroApiException.InvalidApiKey)
     }
 }

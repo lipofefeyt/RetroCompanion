@@ -3,6 +3,10 @@ package com.example.retrocompanion.ui.home
 import android.app.Application
 import com.example.retrocompanion.data.local.CacheKeys
 import com.example.retrocompanion.data.local.ResponseCache
+import com.example.retrocompanion.data.model.AchievementOfTheWeek
+import com.example.retrocompanion.data.model.AchievementOfTheWeekResponse
+import com.example.retrocompanion.data.model.AotwAchievement
+import com.example.retrocompanion.data.model.AotwNamed
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserCredentials
@@ -243,4 +247,73 @@ class HomeViewModelTest {
             viewModel.uiState.value.filteredRecentUnlocks.map { it.title }
         )
     }
+
+    private fun aotwResponse() = AchievementOfTheWeekResponse(
+        achievement = AotwAchievement(id = 9001, title = "Sample Weekly Challenge", points = 25),
+        game = AotwNamed(id = 4242, title = "Sample Quest Adventure"),
+        totalPlayers = 400,
+        unlocksCount = 100
+    )
+
+    @Test
+    fun `achievement of the week loads into its own section`() = runTest(mainDispatcherRule.dispatcher) {
+        val api = FakeRetroAchievementsApi(achievementOfTheWeekResult = { aotwResponse() })
+        val viewModel = HomeViewModel(
+            Application(),
+            FakeUserCredentialsSource(sampleCredentials),
+            RetroAchievementsRepository(api),
+            emptyCache()
+        )
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value.achievementOfTheWeek as SectionState.Success
+        assertEquals(9001, state.data.achievementId)
+        assertEquals(4242, state.data.gameId)
+    }
+
+    @Test
+    fun `achievement of the week failing does not affect the other Home sections`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val api = FakeRetroAchievementsApi(
+                recentlyPlayedGamesResult = { listOf(RecentlyPlayedGame(gameId = 1, title = "Sample Game")) },
+                achievementOfTheWeekResult = { throw httpException(500) }
+            )
+            val viewModel = HomeViewModel(
+                Application(),
+                FakeUserCredentialsSource(sampleCredentials),
+                RetroAchievementsRepository(api),
+                emptyCache()
+            )
+
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.achievementOfTheWeek is SectionState.Error)
+            assertTrue(viewModel.uiState.value.recentlyPlayed is SectionState.Success)
+        }
+
+    @Test
+    fun `cached achievement of the week stays visible when the refresh fails`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val cache = emptyCache()
+            val cached = AchievementOfTheWeek(
+                achievementId = 9001, title = "Cached Challenge", description = null, points = 10,
+                badgeName = null, gameId = 4242, gameTitle = "Sample Quest Adventure", consoleName = null,
+                startAt = null, totalPlayers = 0, unlocksCount = 0, unlocksHardcoreCount = 0, unlockedByUser = false
+            )
+            cache.write(CacheKeys.achievementOfTheWeek(sampleCredentials.username), cached)
+            val api = FakeRetroAchievementsApi(achievementOfTheWeekResult = { throw httpException(500) })
+            val viewModel = HomeViewModel(
+                Application(),
+                FakeUserCredentialsSource(sampleCredentials),
+                RetroAchievementsRepository(api),
+                cache
+            )
+
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value.achievementOfTheWeek as SectionState.Success
+            assertEquals("Cached Challenge", state.data.title)
+            assertTrue(state.isStale)
+        }
 }

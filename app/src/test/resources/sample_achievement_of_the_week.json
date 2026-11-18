@@ -1,0 +1,39 @@
+{
+  "Achievement": {
+    "ID": 9001,
+    "Title": "Sample Weekly Challenge",
+    "Description": "Defeat the sample boss without taking damage",
+    "Points": 25,
+    "TrueRatio": 90,
+    "Type": null,
+    "Author": "sample_author",
+    "AuthorULID": "00000000000000000000000000",
+    "DateCreated": "2023-01-05",
+    "DateModified": "2023-01-06"
+  },
+  "Console": { "ID": 3, "Title": "Sample Console" },
+  "ForumTopic": { "ID": 12345 },
+  "Game": { "ID": 4242, "Title": "Sample Quest Adventure" },
+  "StartAt": "2026-03-09T00:00:00.000000Z",
+  "TotalPlayers": 400,
+  "Unlocks": [
+    {
+      "User": "Other_Player",
+      "ULID": "00000000000000000000000001",
+      "RAPoints": 100,
+      "RASoftcorePoints": 0,
+      "DateAwarded": "2026-03-10T10:00:00.000000Z",
+      "HardcoreMode": 1
+    },
+    {
+      "User": "Sample_User",
+      "ULID": "00000000000000000000000002",
+      "RAPoints": 50,
+      "RASoftcorePoints": 10,
+      "DateAwarded": "2026-03-11T22:13:34.000000Z",
+      "HardcoreMode": 0
+    }
+  ],
+  "UnlocksCount": 100,
+  "UnlocksHardcoreCount": 80
+}

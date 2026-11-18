@@ -1,5 +1,6 @@
 package com.example.retrocompanion.data.remote
 
+import com.example.retrocompanion.data.model.AchievementOfTheWeekResponse
 import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.RecentUnlock
@@ -65,6 +66,18 @@ interface RetroAchievementsApi {
         @Query("u") targetUser: String,
         @Query("m") minutes: Int = 60
     ): List<RecentUnlock>
+
+    /**
+     * Fetches the current Achievement of the Week. Only the web API key (y) is documented for this
+     * endpoint; the authenticating username (z) is sent too, like every other call in this app.
+     * The response includes the full list of players who unlocked it, so it can be large.
+     * Docs: https://api-docs.retroachievements.org/v1/get-achievement-of-the-week.html
+     */
+    @GET("API_GetAchievementOfTheWeek.php")
+    suspend fun getAchievementOfTheWeek(
+        @Query("z") authUser: String,
+        @Query("y") apiKey: String
+    ): AchievementOfTheWeekResponse
 
     /**
      * Fetches the user's achievement unlocks between two moments.

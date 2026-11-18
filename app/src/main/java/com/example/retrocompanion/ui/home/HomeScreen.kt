@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.retrocompanion.data.model.AchievementOfTheWeek
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
 import com.example.retrocompanion.data.model.UserProfileSummary
@@ -126,6 +127,11 @@ fun HomeScreen(
                                 onGoToSettings = onNavigateToSettings
                             )
 
+                            achievementOfTheWeekSection(
+                                state = uiState.achievementOfTheWeek,
+                                onGameClick = onGameClick
+                            )
+
                             item {
                                 Text(
                                     text = "Recently Played Games",
@@ -177,6 +183,25 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * Shows the Achievement of the Week card once it has loaded. It is an extra rather than core data,
+ * so while loading, and if it fails with nothing cached, it simply isn't shown (and doesn't push
+ * an error into the rest of Home); pull-to-refresh tries again.
+ */
+private fun LazyListScope.achievementOfTheWeekSection(
+    state: SectionState<AchievementOfTheWeek>,
+    onGameClick: (Int) -> Unit
+) {
+    val success = state as? SectionState.Success ?: return
+    val achievement = success.data
+    item(key = "achievement-of-the-week") {
+        AchievementOfTheWeekCard(
+            achievement = achievement,
+            onClick = { if (achievement.gameId > 0) onGameClick(achievement.gameId) }
+        )
     }
 }
 

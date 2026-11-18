@@ -1,5 +1,6 @@
 package com.example.retrocompanion.testutil
 
+import com.example.retrocompanion.data.model.AchievementOfTheWeekResponse
 import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.RecentUnlock
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
@@ -30,7 +31,8 @@ class FakeRetroAchievementsApi(
     var completionProgressResult: suspend (count: Int, offset: Int) -> UserCompletionProgressPage =
         { _, _ -> UserCompletionProgressPage() },
     var earnedBetweenResult: suspend (from: Long, to: Long) -> List<RecentUnlock> = { _, _ -> emptyList() },
-    var wantToPlayResult: suspend (count: Int, offset: Int) -> WantToPlayPage = { _, _ -> WantToPlayPage() }
+    var wantToPlayResult: suspend (count: Int, offset: Int) -> WantToPlayPage = { _, _ -> WantToPlayPage() },
+    var achievementOfTheWeekResult: suspend () -> AchievementOfTheWeekResponse = { AchievementOfTheWeekResponse() }
 ) : RetroAchievementsApi {
 
     /** The lookback (m) of the most recent getRecentAchievements call, for asserting on it. */
@@ -79,6 +81,11 @@ class FakeRetroAchievementsApi(
         from: Long,
         to: Long
     ): List<RecentUnlock> = earnedBetweenResult(from, to)
+
+    override suspend fun getAchievementOfTheWeek(
+        authUser: String,
+        apiKey: String
+    ): AchievementOfTheWeekResponse = achievementOfTheWeekResult()
 
     override suspend fun getUserWantToPlayList(
         authUser: String,

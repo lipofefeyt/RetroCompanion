@@ -1,5 +1,6 @@
 package com.example.retrocompanion.data.repository
 
+import com.example.retrocompanion.data.model.AchievementOfTheWeek
 import com.example.retrocompanion.data.model.GameInfo
 import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.RecentlyPlayedGame
@@ -100,6 +101,25 @@ class RetroAchievementsRepository(
             to = toEpochSeconds
         ).mapNotNull { unlock ->
             unlock.date?.takeIf { it.isNotBlank() }?.let { UnlockStamp(unlock.achievementId, it) }
+        }
+    }
+
+    /**
+     * Fetches the current Achievement of the Week as a compact summary (the response's long unlock
+     * list is reduced to "did this user unlock it"). A response with no achievement in it is
+     * reported as a failure rather than an empty card.
+     */
+    suspend fun getAchievementOfTheWeek(
+        credentials: UserCredentials
+    ): Result<AchievementOfTheWeek> = coalesced("aotw:${credentials.hashCode()}") {
+        safeApiCall {
+            require(credentials.isValid) { "User credentials are invalid or missing." }
+            val response = api.getAchievementOfTheWeek(
+                authUser = credentials.username,
+                apiKey = credentials.apiKey
+            )
+            response.toSummary(credentials.username)
+                ?: throw RetroApiException.UnexpectedError("The Achievement of the Week response had no achievement.")
         }
     }
 
