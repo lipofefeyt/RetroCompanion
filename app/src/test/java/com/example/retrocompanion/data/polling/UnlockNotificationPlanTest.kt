@@ -81,6 +81,25 @@ class UnlockNotificationPlanTest {
     }
 
     @Test
+    fun `an individual notification carries the description and badge, a summary does not`() {
+        val single = UnlockNotificationPlan.from(
+            listOf(unlock(1).copy(description = "Do the thing", badgeName = "00123"))
+        ).single()
+        assertEquals("Do the thing", single.description)
+        assertEquals("https://media.retroachievements.org/Badge/00123.png", single.iconUrl)
+
+        val blank = UnlockNotificationPlan.from(listOf(unlock(2).copy(description = "  "))).single()
+        assertNull(blank.description)
+        assertNull(blank.iconUrl)
+
+        val summary = UnlockNotificationPlan.from(
+            (1..UnlockNotificationPlan.MAX_INDIVIDUAL + 1).map { unlock(it).copy(description = "x", badgeName = "1") }
+        ).single()
+        assertNull(summary.description)
+        assertNull(summary.iconUrl)
+    }
+
+    @Test
     fun `notifications never include account details`() {
         val planned = UnlockNotificationPlan.from(listOf(unlock(1)))
         val text = planned.joinToString(" ") { it.title + " " + it.text }

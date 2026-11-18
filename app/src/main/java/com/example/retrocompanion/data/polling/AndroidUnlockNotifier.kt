@@ -6,9 +6,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.graphics.drawable.toBitmap
+import coil.ImageLoader
+import coil.request.ImageRequest
+import kotlinx.coroutines.CancellationException
 import com.example.retrocompanion.MainActivity
 import com.example.retrocompanion.R
 import com.example.retrocompanion.data.model.RecentUnlock
@@ -17,6 +22,7 @@ import com.example.retrocompanion.data.model.RecentUnlock
 class AndroidUnlockNotifier(context: Context) : UnlockNotifier {
 
     private val appContext = context.applicationContext
+    private val imageLoader by lazy { ImageLoader(appContext) }
 
     @SuppressLint("MissingPermission") // Guarded by areNotificationsEnabled(), which covers the runtime permission.
     override suspend fun notifyNewUnlocks(unlocks: List<RecentUnlock>) {
@@ -26,10 +32,13 @@ class AndroidUnlockNotifier(context: Context) : UnlockNotifier {
         ensureChannel(appContext)
 
         UnlockNotificationPlan.from(unlocks).forEach { planned ->
+            val expanded = listOfNotNull(planned.description, planned.text).joinToString("\n")
             val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(planned.iconUrl?.let { loadBadge(it) })
                 .setContentTitle(planned.title)
                 .setContentText(planned.text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(expanded))
                 .setContentIntent(openIntent(planned))
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_SOCIAL)
@@ -37,6 +46,19 @@ class AndroidUnlockNotifier(context: Context) : UnlockNotifier {
                 .build()
             manager.notify(planned.id, notification)
         }
+    }
+
+    /** The badge as a bitmap, or null if it can't be loaded: a missing icon never blocks the notification. */
+    private suspend fun loadBadge(url: String): Bitmap? = try {
+        val request = ImageRequest.Builder(appContext)
+            .data(url)
+            .allowHardware(false) // notifications need a software bitmap
+            .build()
+        imageLoader.execute(request).drawable?.toBitmap()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
     }
 
     private fun openIntent(planned: PlannedNotification): PendingIntent {

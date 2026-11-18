@@ -2,12 +2,18 @@ package com.example.retrocompanion.data.polling
 
 import com.example.retrocompanion.data.model.RecentUnlock
 
-/** One notification to post. [gameId] is where tapping it should go, if known. */
+/**
+ * One notification to post. [gameId] is where tapping it should go, if known. [description] is
+ * shown when the notification is expanded and [iconUrl] is the achievement badge; both are public
+ * achievement data and only set for individual (not summary) notifications.
+ */
 data class PlannedNotification(
     val id: Int,
     val title: String,
     val text: String,
-    val gameId: Int?
+    val gameId: Int?,
+    val description: String? = null,
+    val iconUrl: String? = null
 )
 
 /**
@@ -49,7 +55,9 @@ object UnlockNotificationPlan {
                 id = unlock.achievementId,
                 title = unlock.title.ifBlank { "Achievement unlocked" },
                 text = details.ifEmpty { "Achievement unlocked" },
-                gameId = unlock.gameId
+                gameId = unlock.gameId,
+                description = unlock.description?.takeIf { it.isNotBlank() },
+                iconUrl = unlock.displayBadgeUrl.takeIf { it.isNotBlank() }
             )
         }
     }
