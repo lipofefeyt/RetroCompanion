@@ -1,5 +1,6 @@
 package com.example.retrocompanion.ui.stats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -26,14 +29,18 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.retrocompanion.data.model.GameProgressSummary
 import com.example.retrocompanion.data.model.UserProfileSummary
 import com.example.retrocompanion.ui.common.CredentialsStatus
 import com.example.retrocompanion.ui.common.SectionState
 import com.example.retrocompanion.ui.components.LoadingScreen
 import com.example.retrocompanion.ui.components.MissingCredentialsScreen
+import com.example.retrocompanion.ui.components.NetworkImage
 import com.example.retrocompanion.ui.components.RefreshCompletionHaptic
 import com.example.retrocompanion.ui.components.SectionErrorCard
 import com.example.retrocompanion.ui.components.StaleDataBanner
@@ -45,6 +52,7 @@ import com.example.retrocompanion.ui.components.formatRelativeTime
 fun StatsScreen(
     viewModel: StatsViewModel,
     onNavigateToSettings: () -> Unit,
+    onGameClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -86,7 +94,8 @@ fun StatsScreen(
                             libraryStatsSection(
                                 state = uiState.libraryStats,
                                 onRetry = { viewModel.retry() },
-                                onGoToSettings = onNavigateToSettings
+                                onGoToSettings = onNavigateToSettings,
+                                onGameClick = onGameClick
                             )
                         }
                     }
@@ -125,7 +134,8 @@ private fun LazyListScope.pointsSection(
 private fun LazyListScope.libraryStatsSection(
     state: SectionState<LibraryStats>,
     onRetry: () -> Unit,
-    onGoToSettings: () -> Unit
+    onGoToSettings: () -> Unit,
+    onGameClick: (Int) -> Unit
 ) {
     when (state) {
         is SectionState.Loading -> item { LoadingScreen(message = "Loading your library stats…") }
@@ -172,6 +182,19 @@ private fun LazyListScope.libraryStatsSection(
                     }
                 }
             }
+            if (stats.closestToMastery.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Closest to Mastery",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                items(items = stats.closestToMastery, key = { "closest-${it.gameId}" }) { game ->
+                    ClosestToMasteryRow(game = game, onClick = { onGameClick(game.gameId) })
+                }
+            }
             item {
                 Text(
                     text = "By Console",
@@ -182,6 +205,74 @@ private fun LazyListScope.libraryStatsSection(
             }
             items(items = stats.byConsole, key = { it.consoleName }) { console ->
                 ConsoleStatsRow(console = console)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClosestToMasteryRow(
+    game: GameProgressSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val remaining = game.maxPossible - game.numAwarded
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NetworkImage(
+                url = game.iconUrl,
+                contentDescription = game.title,
+                placeholderGlyph = "🎮",
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = game.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${game.progressPercentage}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(
+                    text = if (remaining == 1) "1 achievement left" else "$remaining achievements left",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { game.progressFraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                )
             }
         }
     }

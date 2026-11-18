@@ -16,9 +16,30 @@ data class LibraryStats(
     val hardcoreRatioPercent: Int,
     val masteredGamesCount: Int,
     val nearCompleteGamesCount: Int,
-    val byConsole: List<ConsoleStats>
+    val byConsole: List<ConsoleStats>,
+    val closestToMastery: List<GameProgressSummary> = emptyList()
 ) {
     companion object {
+        /** How many games the "Closest to Mastery" list shows. */
+        const val CLOSEST_TO_MASTERY_LIMIT = 5
+
+        /**
+         * The started-but-not-mastered games nearest to 100%, best first. Games with no
+         * achievements, no unlocks yet, or already mastered are left out. Ties on completion
+         * are broken by fewest achievements remaining, then by title, so the order is stable.
+         */
+        fun closestToMastery(
+            games: List<GameProgressSummary>,
+            limit: Int = CLOSEST_TO_MASTERY_LIMIT
+        ): List<GameProgressSummary> = games
+            .filter { it.maxPossible > 0 && it.numAwarded > 0 && it.numAwarded < it.maxPossible }
+            .sortedWith(
+                compareByDescending<GameProgressSummary> { it.numAwarded.toDouble() / it.maxPossible }
+                    .thenBy { it.maxPossible - it.numAwarded }
+                    .thenBy { it.title.lowercase() }
+            )
+            .take(limit)
+
         /** Pure aggregation over the full library, so it's testable without a ViewModel. */
         fun from(games: List<GameProgressSummary>): LibraryStats {
             val totalEarned = games.sumOf { it.numAwarded }
@@ -46,7 +67,8 @@ data class LibraryStats(
                 hardcoreRatioPercent = if (totalEarned > 0) (totalHardcore * 100 / totalEarned) else 0,
                 masteredGamesCount = mastered,
                 nearCompleteGamesCount = nearComplete,
-                byConsole = byConsole
+                byConsole = byConsole,
+                closestToMastery = closestToMastery(games)
             )
         }
     }

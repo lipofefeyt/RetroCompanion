@@ -199,6 +199,9 @@ fun MainScreen(
             composable(Screen.Stats.route) {
                 StatsScreen(
                     viewModel = statsViewModel,
+                    onGameClick = { gameId ->
+                        navController.navigate(Screen.GameDetails.createRoute(gameId))
+                    },
                     onNavigateToSettings = {
                         navController.navigate(Screen.Settings.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
