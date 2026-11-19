@@ -15,7 +15,8 @@ tracking, share cards and unlock notifications.
 - **Game Details** — full achievement list with rarity, filters and sorting; share a completed game
   or a rare achievement as an image card.
 - **Unlock notifications** — optional, off by default; checks about every 15 minutes in the
-  background and notifies on new unlocks.
+  background and notifies on new unlocks (a notification can arrive up to ~15 minutes after the
+  unlock).
 - **Profile**, **Settings** (credentials, theme), offline caching with stale-data banners.
 
 ## Prerequisites

@@ -95,7 +95,9 @@ fun UnlockNotificationsSection(
                     )
                     Text(
                         text = "Get a notification when you unlock a new achievement. The app checks " +
-                            "RetroAchievements about every 15 minutes while you have a connection.",
+                            "RetroAchievements about every 15 minutes while you have a connection, so " +
+                            "a notification can arrive up to about 15 minutes after the unlock " +
+                            "(longer if your phone is saving battery).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

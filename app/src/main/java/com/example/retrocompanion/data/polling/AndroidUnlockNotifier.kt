@@ -42,7 +42,7 @@ class AndroidUnlockNotifier(context: Context) : UnlockNotifier {
                 .setContentIntent(openIntent(planned))
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_SOCIAL)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .build()
             manager.notify(planned.id, notification)
         }
@@ -75,7 +75,10 @@ class AndroidUnlockNotifier(context: Context) : UnlockNotifier {
     }
 
     companion object {
-        const val CHANNEL_ID = "unlock_notifications"
+        // A channel's importance can't be raised in code once it exists, so the high-importance
+        // channel has its own id and the original default-importance one is removed.
+        const val CHANNEL_ID = "unlock_notifications_high"
+        private const val LEGACY_CHANNEL_ID = "unlock_notifications"
 
         /** Creates the channel (Android 8+). Safe to call repeatedly. */
         fun ensureChannel(context: Context) {
@@ -83,11 +86,13 @@ class AndroidUnlockNotifier(context: Context) : UnlockNotifier {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Achievement unlocks",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Tells you when you unlock a new RetroAchievements achievement."
             }
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+            manager.createNotificationChannel(channel)
         }
     }
 }
