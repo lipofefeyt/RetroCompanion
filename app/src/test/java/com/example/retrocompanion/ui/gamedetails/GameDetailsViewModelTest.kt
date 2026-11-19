@@ -255,7 +255,7 @@ class GameDetailsViewModelTest {
         var state = viewModel.uiState.value as GameDetailsUiState.Success
         assertEquals(listOf("Common", "Rare"), state.filteredAchievements.map { it.title })
 
-        viewModel.onSortByRarityToggled()
+        viewModel.onSortSelected(AchievementSort.RARITY)
         state = viewModel.uiState.value as GameDetailsUiState.Success
         assertEquals(listOf("Rare", "Common"), state.filteredAchievements.map { it.title })
     }

@@ -93,10 +93,10 @@ class GameDetailsViewModel(
         }
     }
 
-    fun onSortByRarityToggled() {
+    fun onSortSelected(sort: AchievementSort) {
         val currentState = _uiState.value
         if (currentState is GameDetailsUiState.Success) {
-            _uiState.value = currentState.copy(sortByRarity = !currentState.sortByRarity)
+            _uiState.value = currentState.copy(sort = sort)
         }
     }
 

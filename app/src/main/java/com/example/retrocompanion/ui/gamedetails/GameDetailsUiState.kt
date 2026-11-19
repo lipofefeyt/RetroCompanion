@@ -10,6 +10,15 @@ enum class AchievementFilter(val label: String) {
     HARDCORE("Hardcore")
 }
 
+/** How the achievement list is ordered. [DEFAULT] is the game's own display order. */
+enum class AchievementSort(val label: String) {
+    DEFAULT("Default"),
+    DATE("Date unlocked"),
+    POINTS("Points"),
+    RARITY("Rarity"),
+    TITLE("Title")
+}
+
 sealed interface GameDetailsUiState {
     data object Loading : GameDetailsUiState
     data class Error(val message: String, val isInvalidApiKey: Boolean) : GameDetailsUiState
@@ -22,7 +31,7 @@ sealed interface GameDetailsUiState {
         val selectedFilter: AchievementFilter = AchievementFilter.ALL,
         val isFavorite: Boolean = false,
         val isWishlisted: Boolean = false,
-        val sortByRarity: Boolean = false
+        val sort: AchievementSort = AchievementSort.DEFAULT
     ) : GameDetailsUiState {
         val filteredAchievements: List<GameAchievement>
             get() {
@@ -42,11 +51,22 @@ sealed interface GameDetailsUiState {
                             (it.description?.contains(query, ignoreCase = true) == true)
                     }
                 }
-                return if (sortByRarity) {
-                    filteredBySearch.sortedBy { it.numAwarded }
-                } else {
-                    filteredBySearch
-                }
+                return sorted(filteredBySearch)
             }
+
+        /** [list] ordered by [sort]; ties keep the game's display order (the sorts are stable). */
+        private fun sorted(list: List<GameAchievement>): List<GameAchievement> = when (sort) {
+            AchievementSort.DEFAULT -> list
+            // Newest unlock first, then everything still locked in display order. The API's
+            // "yyyy-MM-dd HH:mm:ss" dates sort correctly as plain strings.
+            AchievementSort.DATE -> list.sortedWith(
+                compareByDescending<GameAchievement> { it.unlockDate != null }
+                    .thenByDescending { it.unlockDate.orEmpty() }
+            )
+            AchievementSort.POINTS -> list.sortedByDescending { it.points }
+            // Rarest (fewest players have it) first.
+            AchievementSort.RARITY -> list.sortedBy { it.numAwarded }
+            AchievementSort.TITLE -> list.sortedBy { it.title.lowercase() }
+        }
     }
 }

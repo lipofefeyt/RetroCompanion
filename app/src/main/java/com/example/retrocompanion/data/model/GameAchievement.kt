@@ -42,6 +42,10 @@ data class GameAchievement(
     val isEarned: Boolean get() = !dateEarned.isNullOrBlank()
     val isEarnedHardcore: Boolean get() = !dateEarnedHardcore.isNullOrBlank()
 
+    /** When it was unlocked ("yyyy-MM-dd HH:mm:ss", sortable as text), or null while still locked. */
+    val unlockDate: String?
+        get() = dateEarned?.takeIf { it.isNotBlank() } ?: dateEarnedHardcore?.takeIf { it.isNotBlank() }
+
     val badgeUrl: String
         get() {
             val name = badgeName
