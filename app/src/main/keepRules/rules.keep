@@ -10,3 +10,8 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+# WorkManager (used for unlock polling) builds its Room database by reflection
+# (androidx.work.impl.WorkDatabase_Impl via getDeclaredConstructor). Without this, the release
+# build crashed at startup with NoSuchMethodException from WorkManagerInitializer.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }

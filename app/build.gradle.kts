@@ -53,7 +53,10 @@ android {
             if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
+                // Not kotlin.**: R8 renamed stdlib classes (kotlin.text.g) while androidx classes
+                // that extend them were moved out of the package, and the release app crashed at
+                // startup with IllegalAccessError in WorkManagerInitializer.
+                packageScope = setOf("androidx.**", "kotlinx.**")
             }
         }
     }
