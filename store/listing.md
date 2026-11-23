@@ -19,11 +19,12 @@ What you can do
   wishlist of games you want to play with a bookmark. Import your Want to Play list from the site.
 - Search: one search across your games and recent unlocks.
 - Game details: every achievement with its badge, points, unlock date and rarity. Filter by unlocked
-  or locked, and sort by rarity.
+  or locked, and sort by date, points, rarity or title.
 - Stats: your totals, completion by console, the games closest to mastery, your current and longest
   daily unlock streak, and a 26-week activity heatmap.
-- Share: turn a completed game or a rare achievement into an image card to share.
-- Notifications (optional): get notified about new unlocks. Off by default.
+- Share: turn a completed game or any achievement you've earned into an image card to share.
+- Notifications (optional): get notified about new unlocks, with the badge and description. Off by
+  default; the check runs about every 15 minutes, so a notification can arrive a little late.
 - Works offline with the data it last loaded, and has light and dark themes.
 
 Private by design
