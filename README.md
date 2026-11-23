@@ -86,6 +86,13 @@ See the [privacy policy](docs/privacy.md) for what the app stores and sends (eve
 device except requests to RetroAchievements). [RELEASING.md](RELEASING.md) covers signing and the
 release checklist, and `store/` holds the draft Google Play listing text and Data safety answers.
 
+## Built with AI assistance
+
+Most of this app's code was written with [Claude Code](https://claude.com/claude-code), an AI coding
+assistant, working from instructions in [CLAUDE.md](CLAUDE.md) and the GitHub issues. Commits it
+helped write carry a `Co-Authored-By: Claude` trailer. If that matters to you (for example, a
+distribution channel with a policy on AI-generated code), please take it into account.
+
 ## Project layout
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for screens, layers, data flow, and library choices, and
