@@ -93,6 +93,10 @@ assistant, working from instructions in [CLAUDE.md](CLAUDE.md) and the GitHub is
 helped write carry a `Co-Authored-By: Claude` trailer. If that matters to you (for example, a
 distribution channel with a policy on AI-generated code), please take it into account.
 
+## License
+
+RetroCompanion is licensed under the GNU General Public License, version 3. See [LICENSE](LICENSE).
+
 ## Project layout
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for screens, layers, data flow, and library choices, and
