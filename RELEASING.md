@@ -93,8 +93,8 @@ installs an update over an existing install if it is signed with the same key.
 ## Minification (R8)
 
 Release builds run R8, but `optimization.packageScope` in `app/build.gradle.kts` limits it to
-`androidx.**`, `kotlin.**` and `kotlinx.**`. App code, Retrofit, OkHttp, Gson, Tink and Coil are
-outside that scope, so they are **not renamed or shrunk** (confirm in
+`androidx.**` and `kotlinx.**`. App code, the Kotlin standard library, Retrofit, OkHttp, Gson, Tink
+and Coil are outside that scope, so they are **not renamed or shrunk** (confirm in
 `app/build/outputs/mapping/release/mapping.txt`: it should contain no `com.example` classes).
 
 That matters because several classes are saved as JSON by Gson using their field names, with no
@@ -103,6 +103,9 @@ That matters because several classes are saved as JSON by Gson using their field
 `app/src/main/keepRules/persisted-models.keep` keeps them explicitly so that stays true even if the
 scope is widened. Notes:
 
+- Don't add `kotlin.**` to the scope: R8 then renamed standard library classes that `androidx`
+  classes extend, and the release app crashed at startup with `IllegalAccessError` in
+  `WorkManagerInitializer`.
 - AGP 9 reads keep rules from the `keepRules` source folder, and files there must end in `.keep`
   (a `.pro` file fails the build with a clear message).
 - If you add a class that is persisted through Gson without `@SerializedName`, list it in that file.
